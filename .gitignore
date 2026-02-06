@@ -1,0 +1,38 @@
+# Python dependencies and virtual environment
+venv/
+.venv/
+env/
+bin/
+lib/
+include/
+share/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments and Secrets
+.env
+telegram_signal_parser/.env
+
+# Telegram Signal Parser specific
+telegram_signal_parser/*.session
+telegram_signal_parser/*.session-journal
+telegram_signal_parser/data/*.db
+telegram_signal_parser/logs/*.log
+telegram_signal_parser/mt5_signals/
+
+# Trading specific (Data exports)
+*.csv
+*.txt
+
+# MQL5 specifics
+*.ex5
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
