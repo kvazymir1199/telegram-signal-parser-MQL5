@@ -1,5 +1,6 @@
 import asyncio
 import os
+from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -28,6 +29,9 @@ db_manager = DatabaseManager(settings.database_path)
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and load settings on startup."""
+    # Add a session separator to logs
+    logger.info("\n" + "="*50 + f"\nNEW SESSION STARTED AT {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n" + "="*50)
+
     db_manager.init_tables()
 
     # Seed default settings from .env if DB is empty
@@ -189,9 +193,10 @@ async def get_logs():
 
     try:
         with open(log_file, "r") as f:
-            # Efficiently read last lines
+            # Read all lines and reverse them to show newest at top
             lines = f.readlines()
-            last_lines = lines[-50:]
+            last_lines = lines[-100:] # Increased to 100 for better context
+            last_lines.reverse()
             formatted_logs = "".join(last_lines)
             return HTMLResponse(f'<pre class="whitespace-pre-wrap font-mono text-[10px] leading-tight text-slate-300">{formatted_logs}</pre>')
     except Exception as e:

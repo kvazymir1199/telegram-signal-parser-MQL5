@@ -400,12 +400,12 @@
                 }, 3000);
             }
 
-            // Auto-scroll log window to bottom after HTMX update
+            // Auto-scroll logic removed as newest logs are now at top
             if (evt.detail.target.id === 'log-window') {
                 const logWindow = document.getElementById('log-window');
-                // Use requestAnimationFrame for smoother scrolling and ensuring DOM is updated
+                // Always keep top visible for reversed logs
                 requestAnimationFrame(() => {
-                    logWindow.scrollTop = logWindow.scrollHeight;
+                    logWindow.scrollTop = 0;
                 });
             }
         });
