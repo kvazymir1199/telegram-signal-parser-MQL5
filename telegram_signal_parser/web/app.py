@@ -55,7 +55,7 @@ async def startup_event():
 
     # Update global settings object
     settings.update_from_db(db_settings)
-    logger.info("Dashboard web server started on http://127.0.0.1:7000")
+    logger.info("Dashboard web server started on http://127.0.0.1:7001")
 
 @app.on_event("shutdown")
 async def shutdown_event():

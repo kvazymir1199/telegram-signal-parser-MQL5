@@ -54,7 +54,7 @@ telegram_signal_parser/
 - **Max SL Distance**: Default 15.00 units (150 pips). Configurable via Dashboard.
 
 ## Web Dashboard
-- **URL**: http://127.0.0.1:7000
+- **URL**: http://127.0.0.1:7001
 - **Features**:
   - Start/Stop parser
   - Live log monitoring
