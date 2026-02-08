@@ -51,7 +51,7 @@ class SignalParserApp:
     def run_web(self) -> None:
         """Launch the web dashboard."""
         logger.info("Starting Web Dashboard on http://127.0.0.1:7001")
-        uvicorn.run("web.app:app", host="0.0.0.0", port=7001, log_level="info", reload=False)
+        uvicorn.run("web.app:app", host="127.0.0.1", port=7001, log_level="info", reload=False)
 
 
 def main():
