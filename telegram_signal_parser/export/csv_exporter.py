@@ -30,8 +30,8 @@ class CSVExporter:
         Format: signal_id,symbol,direction,entry_min,entry_max,stop_loss,tp1,tp2,timestamp,status
         """
         try:
-            # Using utf-8 with BOM for best compatibility with MT5
-            with open(self.export_path, mode='w', newline='', encoding='utf-8') as f:
+            # Using utf-8-sig (with BOM) for best compatibility with MT5
+            with open(self.export_path, mode='w', newline='', encoding='utf-8-sig') as f:
                 writer = csv.writer(f)
 
                 # Header
