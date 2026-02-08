@@ -10,6 +10,7 @@ from config.settings import settings
 from parser.signal_parser import SignalParser, ParsedSignal
 from database.connection import DatabaseManager
 from database.models import TradingSignalSchema, SignalStatus, Signal
+from export.csv_exporter import CSVExporter
 
 
 class TelegramSignalClient:
@@ -26,6 +27,7 @@ class TelegramSignalClient:
         )
         self.parser = SignalParser()
         self.db = DatabaseManager(settings.database_path)
+        self.exporter = CSVExporter(settings.export_path)
         self.monitored_channels = set(settings.telegram_channels)
 
     async def start(self) -> None:
@@ -126,7 +128,10 @@ class TelegramSignalClient:
             signal_id = self.db.save_signal(schema.model_dump())
             logger.success(f"✅ NEW SIGNAL SAVED (PROCESS): ID={signal_id}")
 
-        # 5. Log Details
+        # 5. Export to CSV for EA
+        self._export_to_mt5()
+
+        # 6. Log Details
         logger.info(f"   Symbol: {parsed.symbol} | Direction: {parsed.direction}")
         logger.info(f"   Entry: {parsed.entry_min} - {parsed.entry_max}")
         logger.info(f"   Adjusted SL: {parsed.stop_loss} | Adjusted TPs: {parsed.take_profits}")
@@ -165,3 +170,17 @@ class TelegramSignalClient:
         logger.warning(f"❌ SIGNAL REJECTED (Validation Failed) for Message {message.id}:")
         logger.warning(f"   Reason: {error}")
         logger.info(f"   Entry={parsed.entry_min}-{parsed.entry_max}, SL={parsed.stop_loss}, TPs={parsed.take_profits}")
+
+    def _export_to_mt5(self) -> None:
+        """Fetch latest active signals and export them to CSV."""
+        with self.db.get_session() as session:
+            from sqlalchemy import select
+            # Get only signals that EA needs to process or modify
+            stmt = select(Signal).where(Signal.status.in_([SignalStatus.PROCESS.value, SignalStatus.MODIFY.value]))
+            result = session.execute(stmt)
+            active_signals = result.scalars().all()
+
+            if active_signals:
+                self.exporter.export_signals(list(active_signals))
+            else:
+                self.exporter.clear_export()

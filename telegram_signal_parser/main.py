@@ -1,11 +1,11 @@
 """Main module for launching the Telegram Signal Parser application."""
 import asyncio
 import sys
+import uvicorn
 from typing import Optional
 from loguru import logger
 
 from config.settings import settings
-from telegram.client import TelegramSignalClient
 
 
 class SignalParserApp:
@@ -14,7 +14,6 @@ class SignalParserApp:
     def __init__(self):
         """Initialize application and setup environment."""
         self._setup_logging()
-        self.client: Optional[TelegramSignalClient] = None
 
     def _setup_logging(self) -> None:
         """Configure the Loguru logging system."""
@@ -49,33 +48,17 @@ class SignalParserApp:
         logger.info(f"Filter Symbols: {settings.filter_symbols}")
         logger.info(f"Monitored Channels: {settings.telegram_channels}")
 
-    async def run(self) -> None:
-        """Launch the main application loop."""
-        self._print_banner()
-
-        try:
-            self.client = TelegramSignalClient()
-            await self.client.start()
-        except KeyboardInterrupt:
-            logger.info("Application interrupted by user")
-        except Exception as e:
-            logger.exception(f"Critical application failure: {e}")
-        finally:
-            await self.stop()
-
-    async def stop(self) -> None:
-        """Stop application and release resources."""
-        logger.info("Application shutting down...")
-        if self.client and self.client.client.is_connected():
-            await self.client.client.disconnect()
-        logger.info("Shutdown complete")
+    def run_web(self) -> None:
+        """Launch the web dashboard."""
+        logger.info("Starting Web Dashboard on http://127.0.0.1:7000")
+        uvicorn.run("web.app:app", host="127.0.0.1", port=7000, log_level="info", reload=False)
 
 
-async def main():
+def main():
     """Entry point for the script."""
     app = SignalParserApp()
-    await app.run()
+    app.run_web()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

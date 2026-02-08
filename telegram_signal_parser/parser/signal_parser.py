@@ -34,6 +34,15 @@ class ParsedSignal(BaseModel):
 class SignalParser:
     """Trading signal parser using flexible regular expressions."""
 
+    def __init__(self, allowed_symbols: List[str] = None):
+        """
+        Initialize parser.
+
+        Args:
+            allowed_symbols: List of symbols to monitor (e.g., ['XAUUSD', 'GOLD'])
+        """
+        self.allowed_symbols = [s.upper() for s in allowed_symbols] if allowed_symbols else ["XAUUSD", "GOLD"]
+
     # Patterns are flexible: they look for a keyword, then skip non-numeric characters [^0-9.]*
     _PATTERNS: Dict[str, re.Pattern] = {
         'direction': re.compile(
@@ -77,10 +86,14 @@ class SignalParser:
             # 0. Clean text from markdown formatting (like **4810**)
             cleaned_text = self._clean_text(text)
 
-            # 1. Symbol (Strict filtering for XAUUSD)
+            # 1. Symbol (Filter based on allowed_symbols setting)
             symbol = self._extract_symbol(cleaned_text)
-            if not symbol or symbol != "XAUUSD":
+            if not symbol or symbol not in self.allowed_symbols:
                 return None
+
+            # Normalize symbol to XAUUSD if it's Gold
+            if symbol in ("GOLD", "XAUUSD"):
+                symbol = "XAUUSD"
 
             # 2. Direction
             direction = self._extract_direction(cleaned_text)

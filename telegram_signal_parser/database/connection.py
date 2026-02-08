@@ -3,11 +3,11 @@ from pathlib import Path
 from typing import Optional, List, Any, Dict
 from datetime import datetime
 
-from sqlalchemy import create_engine, select, update, desc
+from sqlalchemy import create_engine, select, update, desc, insert
 from sqlalchemy.orm import sessionmaker, Session
 from loguru import logger
 
-from database.models import Base, Signal, SignalStatus, Channel
+from database.models import Base, Signal, SignalStatus, Channel, Setting
 
 
 class DatabaseManager:
@@ -151,3 +151,43 @@ class DatabaseManager:
             stmt = select(Channel.telegram_id).where(Channel.is_active == True)
             result = session.execute(stmt)
             return [row[0] for row in result.all()]
+
+    # --- Settings Management ---
+
+    def get_all_settings(self) -> Dict[str, Any]:
+        """Retrieve all settings from the database as a dictionary."""
+        with self.get_session() as session:
+            stmt = select(Setting)
+            result = session.execute(stmt)
+            return {s.key: s.value for s in result.scalars().all()}
+
+    def get_setting(self, key: str, default: Any = None) -> Any:
+        """Get a specific setting value by key."""
+        with self.get_session() as session:
+            setting = session.get(Setting, key)
+            return setting.value if setting else default
+
+    def update_setting(self, key: str, value: Any, description: Optional[str] = None) -> None:
+        """Update or create a setting in the database."""
+        with self.get_session() as session:
+            try:
+                setting = session.get(Setting, key)
+                if setting:
+                    setting.value = str(value)
+                    if description:
+                        setting.description = description
+                    setting.updated_at = datetime.utcnow()
+                else:
+                    new_setting = Setting(key=key, value=str(value), description=description)
+                    session.add(new_setting)
+                session.commit()
+                logger.debug(f"Setting updated: {key}={value}")
+            except Exception as e:
+                session.rollback()
+                logger.error(f"Error updating setting {key}: {e}")
+                raise
+
+    def bulk_update_settings(self, settings_dict: Dict[str, Any]) -> None:
+        """Update multiple settings at once."""
+        for key, value in settings_dict.items():
+            self.update_setting(key, value)

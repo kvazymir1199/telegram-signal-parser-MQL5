@@ -85,6 +85,19 @@ class Channel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class Setting(Base):
+    """General application settings stored as key-value pairs."""
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<Setting(key={self.key}, value={self.value})>"
+
+
 # --- Pydantic Schemas (Validation) ---
 
 class TradingSignalSchema(BaseModel):
@@ -115,9 +128,18 @@ class TradingSignalSchema(BaseModel):
     @model_validator(mode='after')
     def validate_trading_levels(self) -> 'TradingSignalSchema':
         """Validates logical correctness of SL and TP levels."""
+        from config.settings import settings
+        max_sl = float(settings.max_sl_distance)
+
         if self.direction == SignalDirection.BUY:
             if self.stop_loss >= self.entry_min:
                 raise ValueError(f"BUY: SL ({self.stop_loss}) must be below Entry ({self.entry_min})")
+
+            # SL Distance Check
+            sl_distance = self.entry_min - self.stop_loss
+            if sl_distance > max_sl:
+                raise ValueError(f"BUY: SL distance ({sl_distance:.2f}) exceeds maximum allowed ({max_sl:.2f})")
+
             if self.take_profit_1 <= self.entry_max:
                 raise ValueError(f"BUY: TP1 ({self.take_profit_1}) must be above Entry ({self.entry_max})")
             if self.take_profit_2 and self.take_profit_2 <= self.take_profit_1:
@@ -127,6 +149,12 @@ class TradingSignalSchema(BaseModel):
         else:
             if self.stop_loss <= self.entry_max:
                 raise ValueError(f"SELL: SL ({self.stop_loss}) must be above Entry ({self.entry_max})")
+
+            # SL Distance Check
+            sl_distance = self.stop_loss - self.entry_max
+            if sl_distance > max_sl:
+                raise ValueError(f"SELL: SL distance ({sl_distance:.2f}) exceeds maximum allowed ({max_sl:.2f})")
+
             if self.take_profit_1 >= self.entry_min:
                 raise ValueError(f"SELL: TP1 ({self.take_profit_1}) must be below Entry ({self.entry_min})")
             if self.take_profit_2 and self.take_profit_2 >= self.take_profit_1:

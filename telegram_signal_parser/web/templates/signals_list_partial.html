@@ -1,0 +1,70 @@
+<!-- Hidden element to pass signal count to main template stats -->
+<div id="signal-count-source" class="hidden">{{ signals|length }}</div>
+
+{% for signal in signals %}
+<div class="signal-wrapper">
+    <div class="p-4 grid grid-cols-12 gap-2 items-center signal-row" onclick="toggleDetails('details-{{ signal.id }}')">
+        <div class="col-span-1 font-mono text-xs text-slate-500">#{{ signal.id }}</div>
+        <div class="col-span-2 text-[10px] text-slate-400 leading-tight">
+            {{ signal.created_at.strftime('%m-%d') }}<br>
+            <span class="text-slate-500">{{ signal.created_at.strftime('%H:%M:%S') }}</span>
+        </div>
+        <div class="col-span-2 font-bold">
+            <span class="text-xs {% if signal.direction == 'BUY' %}direction-buy{% else %}direction-sell{% endif %}">{{ signal.direction }}</span>
+        </div>
+        <div class="col-span-3 text-xs font-mono tracking-tighter">
+            {{ signal.entry_min }} - {{ signal.entry_max }}
+        </div>
+        <div class="col-span-2 text-xs font-mono text-red-400/80">{{ signal.stop_loss }}</div>
+        <div class="col-span-2 text-right">
+            <span class="text-[9px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                {{ signal.status }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Expanded Details -->
+    <div id="details-{{ signal.id }}" class="details-panel bg-black/20">
+        <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 border-t border-slate-800/50">
+            <div class="space-y-3">
+                <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                    <i class="fa-brands fa-telegram mr-2"></i> Original Message
+                </h4>
+                <div class="bg-black/40 p-4 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+{{ signal.raw_message }}
+                </div>
+            </div>
+            <div class="space-y-3">
+                <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Target Levels</h4>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 text-center">
+                        <div class="text-[9px] text-slate-500 uppercase">TP 1</div>
+                        <div class="text-sm font-mono text-green-400 font-bold">{{ signal.take_profit_1 }}</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 text-center">
+                        <div class="text-[9px] text-slate-500 uppercase">TP 2</div>
+                        <div class="text-sm font-mono text-green-400 font-bold">{{ signal.take_profit_2 or '---' }}</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 text-center">
+                        <div class="text-[9px] text-slate-500 uppercase">TP 3</div>
+                        <div class="text-sm font-mono text-green-400 font-bold">{{ signal.take_profit_3 or '---' }}</div>
+                    </div>
+                </div>
+
+                <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-2">System Metadata</h4>
+                <div class="bg-slate-800/20 p-4 rounded-xl border border-slate-800/50 space-y-2 text-[10px]">
+                    <div class="flex justify-between"><span class="text-slate-500">Channel ID:</span> <span class="text-slate-300 font-mono">{{ signal.telegram_channel_id }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Message ID:</span> <span class="text-slate-300 font-mono">{{ signal.telegram_message_id }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Hash Code:</span> <span class="text-slate-300 font-mono truncate max-w-[150px]">{{ signal.content_hash }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Last Processed:</span> <span class="text-slate-300">{{ signal.processed_at or 'Waiting...' }}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="p-20 text-center">
+    <div class="text-slate-600 mb-2"><i class="fa-solid fa-inbox text-4xl"></i></div>
+    <div class="text-slate-500 italic text-sm">No signals found in the database.</div>
+</div>
+{% endfor %}

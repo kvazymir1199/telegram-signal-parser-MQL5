@@ -160,6 +160,52 @@ class TestSignalParser:
         assert parser.parse("EURUSD BUY Entry: 1.0800 SL: 1.0700 TP: 1.0900") is None
         assert parser.parse("GBPUSD SELL Entry: 1.2500 SL: 1.2600 TP: 1.2400") is None
 
+    def test_max_sl_distance_validation(self, parser: SignalParser) -> None:
+        """Verify that signals with SL distance > max_sl_distance are rejected."""
+        from database.models import TradingSignalSchema, SignalDirection, SignalStatus
+        from config.settings import settings
+
+        # Set temporary max distance for test
+        original_max = settings.max_sl_distance
+        settings.max_sl_distance = 15.0
+
+        try:
+            # Valid BUY (Distance = 2000 - 1990 = 10.0)
+            TradingSignalSchema(
+                telegram_message_id=1, telegram_channel_id=1,
+                symbol="XAUUSD", direction=SignalDirection.BUY,
+                entry_min=2000.0, entry_max=2000.0, stop_loss=1990.0,
+                take_profit_1=2010.0, raw_message="test", content_hash="hash1"
+            )
+
+            # Invalid BUY (Distance = 2000 - 1980 = 20.0 > 15.0)
+            with pytest.raises(ValueError, match="BUY: SL distance .* exceeds maximum allowed"):
+                TradingSignalSchema(
+                    telegram_message_id=2, telegram_channel_id=1,
+                    symbol="XAUUSD", direction=SignalDirection.BUY,
+                    entry_min=2000.0, entry_max=2000.0, stop_loss=1980.0,
+                    take_profit_1=2010.0, raw_message="test", content_hash="hash2"
+                )
+
+            # Valid SELL (Distance = 2010 - 2000 = 10.0)
+            TradingSignalSchema(
+                telegram_message_id=3, telegram_channel_id=1,
+                symbol="XAUUSD", direction=SignalDirection.SELL,
+                entry_min=2000.0, entry_max=2000.0, stop_loss=2010.0,
+                take_profit_1=1990.0, raw_message="test", content_hash="hash3"
+            )
+
+            # Invalid SELL (Distance = 2020 - 2000 = 20.0 > 15.0)
+            with pytest.raises(ValueError, match="SELL: SL distance .* exceeds maximum allowed"):
+                TradingSignalSchema(
+                    telegram_message_id=4, telegram_channel_id=1,
+                    symbol="XAUUSD", direction=SignalDirection.SELL,
+                    entry_min=2000.0, entry_max=2000.0, stop_loss=2020.0,
+                    take_profit_1=1990.0, raw_message="test", content_hash="hash4"
+                )
+        finally:
+            settings.max_sl_distance = original_max
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
