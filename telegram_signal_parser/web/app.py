@@ -1,5 +1,6 @@
 import asyncio
 import os
+import html
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, BackgroundTasks
@@ -197,7 +198,8 @@ async def get_logs():
             lines = f.readlines()
             last_lines = lines[-100:] # Increased to 100 for better context
             last_lines.reverse()
-            formatted_logs = "".join(last_lines)
+            # Escape HTML to prevent XSS
+            formatted_logs = html.escape("".join(last_lines))
             return HTMLResponse(f'<pre class="whitespace-pre-wrap font-mono text-[10px] leading-tight text-slate-300">{formatted_logs}</pre>')
     except Exception as e:
         return HTMLResponse(f'<div class="text-red-400">Error reading logs: {e}</div>')
