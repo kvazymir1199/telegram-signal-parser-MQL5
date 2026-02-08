@@ -90,10 +90,29 @@ async def run_parser():
 async def index(request: Request):
     """Render the main dashboard page."""
     db_settings = db_manager.get_all_settings()
+
+    # Calculate simple stats
+    with db_manager.get_session() as session:
+        from sqlalchemy import select, func
+        from database.models import Signal
+        from datetime import date
+
+        total_signals = session.execute(select(func.count(Signal.id))).scalar()
+
+        # Signals for today
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        today_signals = session.execute(
+            select(func.count(Signal.id)).where(Signal.created_at >= today_start)
+        ).scalar()
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "settings": db_settings,
-        "is_running": parser_state.is_running
+        "is_running": parser_state.is_running,
+        "stats": {
+            "total": total_signals or 0,
+            "today": today_signals or 0
+        }
     })
 
 @app.get("/signals", response_class=HTMLResponse)

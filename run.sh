@@ -38,15 +38,17 @@ if [ ! -f "$PROJECT_DIR/.env" ]; then
 fi
 
 # 5. Clean up old processes and locks
-echo "--> Checking for hung processes..."
-# Kill any process running on port 7001 (Dashboard)
-lsof -ti:7001 | xargs kill -9 2>/dev/null || true
+echo "--> Checking for hung processes on port 7001..."
+if command -v lsof &> /dev/null; then
+    lsof -ti:7001 | xargs kill -9 2>/dev/null || true
+fi
 pkill -f "python3 main.py" 2>/dev/null || true
 rm -f "$PROJECT_DIR"/*.session-journal 2>/dev/null || true
 
-# 6. Create necessary directories
-echo "--> Creating data and logs directories..."
+# 6. Create necessary directories and set permissions
+echo "--> Preparing environment..."
 mkdir -p "$PROJECT_DIR/data" "$PROJECT_DIR/logs" "$PROJECT_DIR/mt5_signals"
+chmod +x "$0"
 
 # 7. Start application
 echo "--> Launching Dashboard on http://127.0.0.1:7001..."

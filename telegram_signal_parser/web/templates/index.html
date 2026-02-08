@@ -65,6 +65,26 @@
             </div>
         </header>
 
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Total Signals</span>
+                <span class="text-2xl font-black text-blue-400">{{ stats.total }}</span>
+            </div>
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Signals Today</span>
+                <span class="text-2xl font-black text-green-400">{{ stats.today }}</span>
+            </div>
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Max SL Limit</span>
+                <span class="text-2xl font-black text-orange-400">{{ settings.MAX_SL_DISTANCE }}</span>
+            </div>
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Active Port</span>
+                <span class="text-2xl font-black text-purple-400">7001</span>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
