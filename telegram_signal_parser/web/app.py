@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import FastAPI, Request, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from config.settings import settings
@@ -13,6 +14,15 @@ from database.connection import DatabaseManager
 from telegram.client import TelegramSignalClient
 
 app = FastAPI(title="Telegram Signal Parser Dashboard")
+
+# Add CORS middleware to allow HTMX requests from any local origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Setup templates
 templates = Jinja2Templates(directory="web/templates")
@@ -26,6 +36,14 @@ class ParserState:
 
 parser_state = ParserState()
 db_manager = DatabaseManager(settings.database_path)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log every incoming request for debugging."""
+    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
 
 @app.on_event("startup")
 async def startup_event():
@@ -56,7 +74,7 @@ async def startup_event():
 
     # Update global settings object
     settings.update_from_db(db_settings)
-    logger.info("Dashboard web server started on http://127.0.0.1:7001")
+    logger.info("Dashboard web server started on http://127.0.0.1:8080")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -146,43 +164,77 @@ async def signals_list(request: Request):
         "signals": signals
     })
 
-@app.post("/settings/apply")
-async def apply_settings(
-    request: Request,
-    telegram_api_id: str = Form(...),
-    telegram_api_hash: str = Form(...),
-    telegram_phone: str = Form(...),
-    telegram_channels: str = Form(...),
-    filter_symbols: str = Form(...),
-    max_sl_distance: str = Form(...),
-    database_path: str = Form(...),
-    export_path: str = Form(...),
-    log_level: str = Form(...)
-):
-    """Save settings to database and update global configuration."""
-    new_settings = {
-        "TELEGRAM_API_ID": telegram_api_id,
-        "TELEGRAM_API_HASH": telegram_api_hash,
-        "TELEGRAM_PHONE": telegram_phone,
-        "TELEGRAM_CHANNELS": telegram_channels,
-        "FILTER_SYMBOLS": filter_symbols,
-        "MAX_SL_DISTANCE": max_sl_distance,
-        "DATABASE_PATH": database_path,
-        "EXPORT_PATH": export_path,
-        "LOG_LEVEL": log_level
+@app.get("/debug/settings")
+async def debug_settings():
+    """Endpoint to check current settings state."""
+    db_values = db_manager.get_all_settings()
+    return {
+        "memory": {
+            "api_id": settings.telegram_api_id,
+            "api_hash": "***" if settings.telegram_api_hash else None,
+            "phone": settings.telegram_phone,
+            "is_configured": settings.is_fully_configured()
+        },
+        "database": db_values
     }
 
-    db_manager.bulk_update_settings(new_settings)
-    settings.update_from_db(new_settings)
+@app.post("/settings/apply")
+async def apply_settings(
+    request: Request
+):
+    """Save settings to database and update global configuration."""
+    form_data_raw = await request.form()
+    logger.info(f"Incoming form request. Fields: {list(form_data_raw.keys())}")
 
-    # Return HTMX partial or redirect
-    if request.headers.get("HX-Request"):
-        return HTMLResponse('<div class="bg-green-500 text-white p-2 rounded mb-4" id="flash-message">Settings applied successfully!</div>')
-    return RedirectResponse(url="/", status_code=303)
+    new_settings = {}
+    mapping = {
+        "telegram_api_id": "TELEGRAM_API_ID",
+        "telegram_api_hash": "TELEGRAM_API_HASH",
+        "telegram_phone": "TELEGRAM_PHONE",
+        "telegram_channels": "TELEGRAM_CHANNELS",
+        "filter_symbols": "FILTER_SYMBOLS",
+        "max_sl_distance": "MAX_SL_DISTANCE",
+        "database_path": "DATABASE_PATH",
+        "export_path": "EXPORT_PATH",
+        "log_level": "LOG_LEVEL"
+    }
+
+    for form_key, db_key in mapping.items():
+        val = form_data_raw.get(form_key)
+        if val is not None:
+            val_str = str(val).strip()
+            new_settings[db_key] = val_str
+            logger.debug(f"Form data: {form_key} -> {db_key} = {val_str if 'hash' not in form_key else '***'}")
+
+    if not new_settings:
+        logger.warning("No settings fields found in POST request")
+        return HTMLResponse('<div class="bg-yellow-500 text-white p-2 rounded mb-4" id="flash-message">No settings provided to update.</div>')
+
+    try:
+        db_manager.bulk_update_settings(new_settings)
+
+        # Reload and sync
+        updated_db_settings = db_manager.get_all_settings()
+        settings.update_from_db(updated_db_settings)
+
+        is_ok = settings.is_fully_configured()
+        logger.success(f"Settings applied. System ready: {is_ok}")
+
+        msg = f"Settings applied successfully! (Configuration: {'READY' if is_ok else 'INCOMPLETE'})"
+        color = "bg-green-500" if is_ok else "bg-blue-500"
+
+        return HTMLResponse(f'<div class="{color} text-white p-2 rounded mb-4" id="flash-message">{msg}</div>')
+    except Exception as e:
+        logger.error(f"Error applying settings: {e}")
+        return HTMLResponse(f'<div class="bg-red-500 text-white p-2 rounded mb-4" id="flash-message">Error: {str(e)}</div>')
 
 @app.post("/parser/start")
 async def start_parser():
     """Start the parser background task."""
+    # Force reload from DB before starting to be 100% sure
+    db_settings = db_manager.get_all_settings()
+    settings.update_from_db(db_settings)
+
     if not settings.is_fully_configured():
         # Return Stopped status + Out-of-band error notification
         return HTMLResponse(

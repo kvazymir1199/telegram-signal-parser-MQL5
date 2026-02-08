@@ -33,9 +33,9 @@ if [ ! -f "$PROJECT_DIR/.env" ]; then
 fi
 
 # 5. Clean up old processes and locks
-echo "--> Checking for hung processes on port 7001..."
+echo "--> Checking for hung processes on port 8080..."
 if command -v lsof &> /dev/null; then
-    lsof -ti:7001 | xargs kill -9 2>/dev/null || true
+    lsof -ti:8080 | xargs kill -9 2>/dev/null || true
 fi
 pkill -f "python3 main.py" 2>/dev/null || true
 rm -f "$PROJECT_DIR"/*.session-journal 2>/dev/null || true
@@ -46,7 +46,7 @@ mkdir -p "$PROJECT_DIR/data" "$PROJECT_DIR/logs" "$PROJECT_DIR/mt5_signals"
 chmod +x "$0"
 
 # 7. Start application
-echo "--> Launching Dashboard on http://127.0.0.1:7001..."
+echo "--> Launching Dashboard on http://127.0.0.1:8080..."
 cd "$PROJECT_DIR"
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 python3 "main.py"

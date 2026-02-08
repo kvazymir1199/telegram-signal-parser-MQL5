@@ -12,7 +12,7 @@ A stable and risk-controlled trading automation system that bridge Telegram sign
    *This will create a virtual environment, install dependencies, and launch the Dashboard.*
 
 2. **Configure via Dashboard:**
-   Open your browser at [http://127.0.0.1:7001](http://127.0.0.1:7001)
+   Open your browser at [http://127.0.0.1:8080](http://127.0.0.1:8080)
    - Enter your **Telegram API ID** and **API Hash** (get them from [my.telegram.org](https://my.telegram.org)).
    - Add the **Channel IDs** you want to monitor.
    - Set the **MT5 Export Path** to your MetaTrader 5 `MQL5/Files` directory.

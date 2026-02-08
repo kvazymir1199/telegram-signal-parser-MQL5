@@ -31,13 +31,13 @@ class Settings(BaseSettings):
 
     # Database
     database_path: str = Field(
-        default="./data/signals.db",
+        default=str(BASE_DIR / "data" / "signals.db"),
         description="Path to SQLite database file"
     )
 
     # Export
     export_path: str = Field(
-        default="./mt5_signals/signals.csv",
+        default=str(BASE_DIR / "mt5_signals" / "signals.csv"),
         description="Path to export CSV file for MT5"
     )
 
@@ -81,20 +81,62 @@ class Settings(BaseSettings):
     )
 
     def update_from_db(self, db_settings: Dict[str, Any]):
-        """Update settings object with values from database."""
+        """Update settings object with values from database using Pydantic validation."""
+        from loguru import logger
+
+        # Prepare data for Pydantic validation (lowercase keys)
+        update_data = {}
         for key, value in db_settings.items():
-            # Match DB keys (upper) to class attributes (lower)
             attr_name = key.lower()
             if hasattr(self, attr_name):
-                setattr(self, attr_name, value)
+                update_data[attr_name] = value
+
+        if not update_data:
+            return
+
+        try:
+            # Create a temporary object to trigger validation/coercion
+            # This is safer than raw setattr because it handles types (str -> int, etc.)
+            new_obj = self.__class__(**{**self.model_dump(), **update_data})
+
+            # Update current object with validated data
+            for attr, val in new_obj.model_dump().items():
+                setattr(self, attr, val)
+
+            logger.info("Settings successfully updated from database and validated.")
+        except Exception as e:
+            logger.error(f"Failed to validate settings update from DB: {e}")
+            # Fallback to direct setattr if validation fails (best effort)
+            for attr, val in update_data.items():
+                try:
+                    setattr(self, attr, val)
+                except:
+                    pass
 
     def is_fully_configured(self) -> bool:
         """Check if required Telegram credentials are provided."""
-        return (
-            self.telegram_api_id > 0 and
-            len(self.telegram_api_hash) > 5 and
-            len(self.telegram_phone) > 5
+        from loguru import logger
+
+        # Explicitly check values after potential DB update
+        api_id = 0
+        try:
+            api_id = int(self.telegram_api_id)
+        except:
+            pass
+
+        api_hash = str(self.telegram_api_hash or "").strip()
+        phone = str(self.telegram_phone or "").strip()
+
+        is_ok = (
+            api_id > 0 and
+            len(api_hash) > 10 and # API Hash is usually long
+            len(phone) > 5
         )
+
+        if not is_ok:
+            logger.warning(f"Configuration validation failed: ID={api_id}, HashSet={bool(api_hash)}, PhoneSet={bool(phone)}")
+
+        return is_ok
 
 
 # Create global settings object

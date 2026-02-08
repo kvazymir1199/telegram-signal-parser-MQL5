@@ -81,7 +81,7 @@
             </div>
             <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
                 <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Active Port</span>
-                <span class="text-2xl font-black text-purple-400">7001</span>
+                <span class="text-2xl font-black text-purple-400">8080</span>
             </div>
         </div>
 
@@ -124,6 +124,10 @@
                                 class="w-full py-3 px-4 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold flex items-center justify-center">
                             <i class="fa-solid fa-stop mr-2"></i> Stop
                         </button>
+                        <a href="/debug/settings" target="_blank"
+                           class="w-full py-2 px-4 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold flex items-center justify-center hover:bg-slate-800 transition-all">
+                            <i class="fa-solid fa-bug mr-2"></i> Debug Settings
+                        </a>
                     </div>
                 </div>
 
@@ -147,7 +151,7 @@
                             </li>
                             <li class="flex justify-between">
                                 <span>Port:</span>
-                                <span class="text-slate-200">7001</span>
+                                <span class="text-slate-200">8080</span>
                             </li>
                         </ul>
                     </div>
@@ -157,7 +161,7 @@
             <!-- Settings Form -->
             <div class="md:col-span-2">
                 <div id="flash-container"></div>
-                <form hx-post="/settings/apply" hx-target="#flash-container" class="space-y-8">
+                <form hx-post="/settings/apply" hx-target="#flash-container" hx-swap="innerHTML" class="space-y-8">
                     <!-- Telegram API Section -->
                     <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
                         <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('api-content', this)">

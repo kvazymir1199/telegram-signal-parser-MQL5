@@ -188,6 +188,20 @@ class DatabaseManager:
                 raise
 
     def bulk_update_settings(self, settings_dict: Dict[str, Any]) -> None:
-        """Update multiple settings at once."""
-        for key, value in settings_dict.items():
-            self.update_setting(key, value)
+        """Update multiple settings at once in a single transaction."""
+        with self.get_session() as session:
+            try:
+                for key, value in settings_dict.items():
+                    setting = session.get(Setting, key)
+                    if setting:
+                        setting.value = str(value)
+                        setting.updated_at = datetime.utcnow()
+                    else:
+                        new_setting = Setting(key=key, value=str(value))
+                        session.add(new_setting)
+                session.commit()
+                logger.info(f"Bulk settings update successful for {len(settings_dict)} keys")
+            except Exception as e:
+                session.rollback()
+                logger.error(f"Error in bulk settings update: {e}")
+                raise
