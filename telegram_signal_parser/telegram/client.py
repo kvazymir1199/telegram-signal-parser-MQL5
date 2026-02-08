@@ -114,7 +114,6 @@ class TelegramSignalClient:
             update_data = schema.model_dump(exclude={'status'})
             update_data["status"] = SignalStatus.MODIFY.value
             self.db.update_signal(existing_signal.id, update_data)
-            logger.success(f"✅ SIGNAL UPDATED (MODIFY): ID={existing_signal.id}")
         else:
             if existing_signal:
                 logger.debug(f"Message {message.id} already exists. Skipping.")
@@ -126,15 +125,18 @@ class TelegramSignalClient:
                 return
 
             signal_id = self.db.save_signal(schema.model_dump())
-            logger.success(f"✅ NEW SIGNAL SAVED (PROCESS): ID={signal_id}")
 
         # 5. Export to CSV for EA
         self._export_to_mt5()
 
         # 6. Log Details
-        logger.info(f"   Symbol: {parsed.symbol} | Direction: {parsed.direction}")
-        logger.info(f"   Entry: {parsed.entry_min} - {parsed.entry_max}")
-        logger.info(f"   Adjusted SL: {parsed.stop_loss} | Adjusted TPs: {parsed.take_profits}")
+        log_msg = (
+            f"✅ SIGNAL SAVED: ID={signal_id if 'signal_id' in locals() else existing_signal.id}\n"
+            f"   Symbol: {parsed.symbol} | Direction: {parsed.direction}\n"
+            f"   Entry: {parsed.entry_min} - {parsed.entry_max}\n"
+            f"   Adjusted SL: {parsed.stop_loss} | Adjusted TPs: {parsed.take_profits}"
+        )
+        logger.info(log_msg)
 
     def _create_signal_schema(self, message: Any, chat_id: int, parsed: ParsedSignal,
                             content_hash: str, status: SignalStatus) -> Optional[TradingSignalSchema]:
@@ -167,9 +169,12 @@ class TelegramSignalClient:
 
     def _handle_invalid_signal(self, message: Any, parsed: ParsedSignal, error: str) -> None:
         """Logs rejected signals."""
-        logger.warning(f"❌ SIGNAL REJECTED (Validation Failed) for Message {message.id}:")
-        logger.warning(f"   Reason: {error}")
-        logger.info(f"   Entry={parsed.entry_min}-{parsed.entry_max}, SL={parsed.stop_loss}, TPs={parsed.take_profits}")
+        log_msg = (
+            f"❌ SIGNAL REJECTED (Validation Failed) for Message {message.id}:\n"
+            f"   Reason: {error}\n"
+            f"   Entry={parsed.entry_min}-{parsed.entry_max}, SL={parsed.stop_loss}, TPs={parsed.take_profits}"
+        )
+        logger.warning(log_msg)
 
     def _export_to_mt5(self) -> None:
         """Fetch latest active signals and export them to CSV."""

@@ -403,7 +403,10 @@
             // Auto-scroll log window to bottom after HTMX update
             if (evt.detail.target.id === 'log-window') {
                 const logWindow = document.getElementById('log-window');
-                logWindow.scrollTop = logWindow.scrollHeight;
+                // Use requestAnimationFrame for smoother scrolling and ensuring DOM is updated
+                requestAnimationFrame(() => {
+                    logWindow.scrollTop = logWindow.scrollHeight;
+                });
             }
         });
     </script>

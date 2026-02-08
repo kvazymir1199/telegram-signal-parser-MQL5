@@ -182,15 +182,16 @@ async def get_status():
 
 @app.get("/parser/logs")
 async def get_logs():
-    """Return the last 20 lines of the log file."""
+    """Return the last 50 lines of the log file."""
     log_file = settings.log_file
     if not os.path.exists(log_file):
         return HTMLResponse('<div class="text-slate-500 italic">No log file found yet...</div>')
 
     try:
         with open(log_file, "r") as f:
+            # Efficiently read last lines
             lines = f.readlines()
-            last_lines = lines[-20:]
+            last_lines = lines[-50:]
             formatted_logs = "".join(last_lines)
             return HTMLResponse(f'<pre class="whitespace-pre-wrap font-mono text-[10px] leading-tight text-slate-300">{formatted_logs}</pre>')
     except Exception as e:

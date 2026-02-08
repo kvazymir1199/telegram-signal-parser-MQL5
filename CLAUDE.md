@@ -51,6 +51,15 @@ telegram_signal_parser/
 ### Validation Logic
 - BUY: SL < Entry < TP1 < TP2
 - SELL: SL > Entry > TP1 > TP2
+- **Max SL Distance**: Default 15.00 units (150 pips). Configurable via Dashboard.
+
+## Web Dashboard
+- **URL**: http://127.0.0.1:7000
+- **Features**:
+  - Start/Stop parser
+  - Live log monitoring
+  - Configuration management (API keys, channels, trading filters)
+  - View signal history
 
 ## MQL5 EA Component
 
