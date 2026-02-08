@@ -25,7 +25,7 @@ class TelegramSignalClient:
             connection_retries=None,
             auto_reconnect=True
         )
-        self.parser = SignalParser()
+        self.parser = SignalParser(allowed_symbols=settings.filter_symbols)
         self.db = DatabaseManager(settings.database_path)
         self.exporter = CSVExporter(settings.export_path)
         self.monitored_channels = set(settings.telegram_channels)

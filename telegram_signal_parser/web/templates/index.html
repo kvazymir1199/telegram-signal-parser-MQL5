@@ -420,14 +420,7 @@
                 }, 3000);
             }
 
-            // Auto-scroll logic removed as newest logs are now at top
-            if (evt.detail.target.id === 'log-window') {
-                const logWindow = document.getElementById('log-window');
-                // Always keep top visible for reversed logs
-                requestAnimationFrame(() => {
-                    logWindow.scrollTop = 0;
-                });
-            }
+            // Auto-scroll logic removed to allow manual scrolling
         });
     </script>
 </body>
