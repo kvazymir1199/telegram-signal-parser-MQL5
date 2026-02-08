@@ -27,14 +27,9 @@ source "$VENV_DIR/bin/activate"
 pip install --upgrade pip
 pip install -r "$PROJECT_DIR/requirements.txt"
 
-# 4. Check .env file
+# 4. Check .env file (Optional in production, settings can be set in Dashboard)
 if [ ! -f "$PROJECT_DIR/.env" ]; then
-    echo "============================================================"
-    echo "WARNING: File $PROJECT_DIR/.env not found!"
-    echo "Please create it based on .env.example"
-    echo "Application cannot start without valid settings."
-    echo "============================================================"
-    exit 1
+    echo "Notice: $PROJECT_DIR/.env not found. Using defaults/database settings."
 fi
 
 # 5. Clean up old processes and locks

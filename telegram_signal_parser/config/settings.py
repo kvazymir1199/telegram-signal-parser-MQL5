@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     """Application settings loaded from .env file or environment variables."""
 
     # Telegram API
-    telegram_api_id: int = Field(..., description="Telegram API ID")
-    telegram_api_hash: str = Field(..., description="Telegram API Hash")
-    telegram_phone: str = Field(..., description="Phone number in international format (+...)")
+    telegram_api_id: int = Field(default=0, description="Telegram API ID")
+    telegram_api_hash: str = Field(default="", description="Telegram API Hash")
+    telegram_phone: str = Field(default="", description="Phone number in international format (+...)")
 
     # Use Any for raw data from .env to avoid automatic JSON decoding by Pydantic
     telegram_channels: Any = Field(
@@ -87,6 +87,14 @@ class Settings(BaseSettings):
             attr_name = key.lower()
             if hasattr(self, attr_name):
                 setattr(self, attr_name, value)
+
+    def is_fully_configured(self) -> bool:
+        """Check if required Telegram credentials are provided."""
+        return (
+            self.telegram_api_id > 0 and
+            len(self.telegram_api_hash) > 5 and
+            len(self.telegram_phone) > 5
+        )
 
 
 # Create global settings object

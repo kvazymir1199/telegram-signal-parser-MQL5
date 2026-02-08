@@ -411,13 +411,15 @@
         `;
         document.head.appendChild(style);
 
-        // Remove flash messages after 3 seconds
+        // Remove flash messages and error popups after 5 seconds
         document.body.addEventListener('htmx:afterOnLoad', function(evt) {
             if (evt.detail.target.id === 'flash-container') {
                 setTimeout(() => {
                     const msg = document.getElementById('flash-message');
                     if (msg) msg.remove();
-                }, 3000);
+                    const err = document.getElementById('error-popup');
+                    if (err) err.remove();
+                }, 5000);
             }
 
             // Auto-scroll logic removed to allow manual scrolling

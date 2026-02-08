@@ -183,6 +183,17 @@ async def apply_settings(
 @app.post("/parser/start")
 async def start_parser():
     """Start the parser background task."""
+    if not settings.is_fully_configured():
+        # Return Stopped status + Out-of-band error notification
+        return HTMLResponse(
+            status_code=200,
+            content='<span class="h-3 w-3 rounded-full bg-red-500 inline-block"></span><span class="ml-2 text-red-500 font-bold uppercase tracking-wider text-xs">Stopped</span>'
+                    '<div hx-swap-oob="afterbegin:#flash-container">'
+                    '<div class="bg-red-600 text-white p-4 rounded-xl shadow-lg mb-4 flex justify-between items-center animate-pulse" id="error-popup">'
+                    '<div><i class="fa-solid fa-triangle-exclamation mr-2"></i> <strong>Configuration Required:</strong> Please enter your Telegram API ID, Hash, and Phone in Settings below.</div>'
+                    '<button onclick="this.parentElement.remove()" class="ml-4 opacity-70 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button></div></div>'
+        )
+
     if not parser_state.is_running:
         parser_state.task = asyncio.create_task(run_parser())
         return HTMLResponse(status_code=200, content='<span class="flex h-3 w-3"><span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span><span class="ml-2 text-green-500 font-bold">RUNNING</span>')
