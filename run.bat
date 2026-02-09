@@ -36,10 +36,19 @@ if "%PYTHON_CMD%"=="" (
     echo [*] Downloading Python %PYTHON_VERSION%...
 
     :: Use curl (built into Windows 10+) to download installer
-    curl -L "https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe" -o %INSTALLER_NAME%
+    :: Added -f (fail silently on server errors) and better error handling
+    curl -fL "https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe" -o %INSTALLER_NAME%
 
-    if %errorlevel% neq 0 (
-        echo [X] Failed to download Python installer. Please check your internet connection.
+    :: Check if file exists and is not empty instead of just errorlevel
+    if not exist %INSTALLER_NAME% (
+        echo [X] Failed to download Python installer. File not found.
+        pause
+        exit /b 1
+    )
+
+    for %%I in (%INSTALLER_NAME%) do if %%~zI lss 1000000 (
+        echo [X] Downloaded file is too small. Probably a download error.
+        del %INSTALLER_NAME%
         pause
         exit /b 1
     )
