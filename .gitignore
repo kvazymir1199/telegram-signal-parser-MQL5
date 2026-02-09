@@ -24,6 +24,8 @@ telegram_signal_parser/data_export/
 # Trading specific (Data exports)
 *.csv
 *.txt
+!telegram_signal_parser/requirements.txt
+!requirements.txt
 
 # OS generated files
 .DS_Store
