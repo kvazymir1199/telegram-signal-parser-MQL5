@@ -124,6 +124,10 @@
                                 class="w-full py-3 px-4 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold flex items-center justify-center">
                             <i class="fa-solid fa-stop mr-2"></i> Stop
                         </button>
+                        <button hx-post="/parser/test-signal"
+                                class="w-full py-2 px-4 rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-400 text-xs font-semibold flex items-center justify-center hover:bg-blue-500/10 transition-all">
+                            <i class="fa-solid fa-vial mr-2"></i> Send Test Signal
+                        </button>
                         <a href="/debug/settings" target="_blank"
                            class="w-full py-2 px-4 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold flex items-center justify-center hover:bg-slate-800 transition-all">
                             <i class="fa-solid fa-bug mr-2"></i> Debug Settings
@@ -256,11 +260,29 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <label class="text-sm font-medium text-slate-400">Database Path</label>
-                                    <input type="text" name="database_path" value="{{ settings.DATABASE_PATH }}" class="w-full p-3 rounded-xl input-field">
+                                    <div class="relative">
+                                        <input type="text" id="database_path" name="database_path" value="{{ settings.DATABASE_PATH }}" class="w-full p-3 pr-12 rounded-xl input-field">
+                                        <button type="button"
+                                                hx-get="/settings/browse?target_input=database_path"
+                                                hx-target="#picker-content"
+                                                onclick="openPicker()"
+                                                class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-blue-400 transition-colors">
+                                            <i class="fa-solid fa-folder-tree"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="space-y-2">
                                     <label class="text-sm font-medium text-slate-400">Export Path (CSV)</label>
-                                    <input type="text" name="export_path" value="{{ settings.EXPORT_PATH }}" class="w-full p-3 rounded-xl input-field">
+                                    <div class="relative">
+                                        <input type="text" id="export_path" name="export_path" value="{{ settings.EXPORT_PATH }}" class="w-full p-3 pr-12 rounded-xl input-field">
+                                        <button type="button"
+                                                hx-get="/settings/browse?target_input=export_path"
+                                                hx-target="#picker-content"
+                                                onclick="openPicker()"
+                                                class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-blue-400 transition-colors">
+                                            <i class="fa-solid fa-folder-tree"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="space-y-2">
@@ -318,7 +340,51 @@
         </footer>
     </div>
 
+    <!-- Directory Picker Modal -->
+    <div id="directory-picker-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closePicker()"></div>
+        <div class="glass relative w-full max-w-md rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-5 bg-slate-800/60 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-bold text-slate-200">Browse Directory</h3>
+                <button onclick="closePicker()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="picker-content" class="p-6">
+                <div class="flex justify-center p-8"><i class="fa-solid fa-spinner fa-spin text-blue-500 text-2xl"></i></div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function openPicker() {
+            document.getElementById('directory-picker-modal').classList.remove('hidden');
+        }
+
+        function closePicker() {
+            document.getElementById('directory-picker-modal').classList.add('hidden');
+        }
+
+        function selectFolder(path, targetId) {
+            const input = document.getElementById(targetId);
+            if (input) {
+                let finalPath = path;
+                const isWindows = path.includes('\\');
+                const sep = isWindows ? '\\' : '/';
+
+                // Append default filename if missing
+                if (targetId === 'database_path' && !path.toLowerCase().endsWith('.db')) {
+                    finalPath = path + (path.endsWith(sep) ? '' : sep) + 'signals.db';
+                } else if (targetId === 'export_path' && !path.toLowerCase().endsWith('.csv')) {
+                    finalPath = path + (path.endsWith(sep) ? '' : sep) + 'signals.csv';
+                }
+
+                input.value = finalPath;
+
+                // Trigger HTMX change if needed
+                input.dispatchEvent(new Event('change'));
+            }
+            closePicker();
+        }
+
         // Управление списком каналов
         let channels = [];
         const channelsList = document.getElementById('channels-list');

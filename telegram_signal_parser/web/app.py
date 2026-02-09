@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from config.settings import settings
+from config.settings import settings, BASE_DIR
 from database.connection import DatabaseManager
 from telegram.client import TelegramSignalClient
 
@@ -260,6 +260,51 @@ async def stop_parser():
         return HTMLResponse(status_code=200, content='<span class="h-3 w-3 rounded-full bg-red-500 inline-block"></span><span class="ml-2 text-red-500 font-bold">STOPPED</span>')
     return HTMLResponse(status_code=200)
 
+@app.post("/parser/test-signal")
+async def test_signal():
+    """Generate a fake signal for demonstration purposes."""
+    from database.models import SignalStatus
+    import random
+
+    # 1. Create a dummy signal
+    entry_min = 2350.0 + random.uniform(-10, 10)
+    test_data = {
+        "telegram_message_id": random.randint(1000, 9999),
+        "telegram_channel_id": -123456789,
+        "symbol": "XAUUSD",
+        "direction": "BUY",
+        "entry_min": round(entry_min, 2),
+        "entry_max": round(entry_min + 2.0, 2),
+        "stop_loss": round(entry_min - 10.0, 2),
+        "take_profit_1": round(entry_min + 5.0, 2),
+        "take_profit_2": round(entry_min + 15.0, 2),
+        "take_profit_3": None,
+        "raw_message": f"TEST SIGNAL: XAUUSD BUY @ {round(entry_min, 2)}",
+        "content_hash": f"test_{datetime.now().timestamp()}",
+        "status": SignalStatus.PROCESS.value
+    }
+
+    try:
+        # 2. Save to DB
+        db_manager.save_signal(test_data)
+
+        # 3. Trigger Export
+        from telegram.client import TelegramSignalClient
+        temp_client = TelegramSignalClient()
+        temp_client._export_signals()
+
+        logger.success("Test signal generated and exported to CSV.")
+        return HTMLResponse(
+            status_code=200,
+            content='<div hx-swap-oob="afterbegin:#flash-container">'
+                    '<div class="bg-green-600 text-white p-4 rounded-xl shadow-lg mb-4 flex justify-between items-center" id="test-popup">'
+                    '<div><i class="fa-solid fa-vial mr-2"></i> <strong>Test Success:</strong> Dummy signal generated and exported to CSV!</div>'
+                    '<button onclick="this.parentElement.remove()" class="ml-4 opacity-70 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button></div></div>'
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate test signal: {e}")
+        return HTMLResponse(content=f'<div class="bg-red-500 text-white p-2 rounded">Error: {e}</div>')
+
 @app.get("/parser/status")
 async def get_status():
     """Get current status of the parser for HTMX polling."""
@@ -285,3 +330,46 @@ async def get_logs():
             return HTMLResponse(f'<pre class="whitespace-pre-wrap font-mono text-[10px] leading-tight text-slate-300">{formatted_logs}</pre>')
     except Exception as e:
         return HTMLResponse(f'<div class="text-red-400">Error reading logs: {e}</div>')
+
+@app.get("/settings/browse", response_class=HTMLResponse)
+async def browse_directory(
+    request: Request,
+    current_path: str = None,
+    target_input: str = "database_path"
+):
+    """List directories for the picker and return a partial HTML."""
+    from pathlib import Path
+
+    # Start at current path, settings path, or BASE_DIR
+    if not current_path or not os.path.exists(current_path):
+        current_path = str(BASE_DIR)
+
+    # Ensure current_path is a directory
+    if os.path.isfile(current_path):
+        current_path = os.path.dirname(current_path)
+
+    path_obj = Path(current_path).resolve()
+
+    # List only directories
+    items = []
+    try:
+        for item in path_obj.iterdir():
+            if item.is_dir() and not item.name.startswith('.'):
+                items.append({
+                    "name": item.name,
+                    "path": str(item.absolute()),
+                })
+        items.sort(key=lambda x: x["name"].lower())
+    except PermissionError:
+        logger.warning(f"Permission denied accessing directory: {current_path}")
+
+    parent_path = str(path_obj.parent.absolute()) if path_obj != path_obj.parent else None
+
+    return templates.TemplateResponse("directory_picker_partial.html", {
+        "request": request,
+        "current_path": str(path_obj),
+        "parent_path": parent_path,
+        "items": items,
+        "target_input": target_input,
+        "base_dir": str(BASE_DIR)
+    })
