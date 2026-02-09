@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+cd "$SCRIPT_DIR"
+
 # Virtual environment directory name
 VENV_DIR="venv"
 PROJECT_DIR="telegram_signal_parser"
@@ -35,7 +39,12 @@ fi
 # 5. Clean up old processes and locks
 echo "--> Checking for hung processes on port 8000..."
 if command -v lsof &> /dev/null; then
-    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    # Try to find PID on port 8000 and kill it
+    PID=$(lsof -ti:8000)
+    if [ ! -z "$PID" ]; then
+        echo "Found process $PID on port 8000. Terminating..."
+        kill -9 $PID 2>/dev/null || true
+    fi
 fi
 pkill -f "python3 main.py" 2>/dev/null || true
 rm -f "$PROJECT_DIR"/*.session-journal 2>/dev/null || true
@@ -48,5 +57,6 @@ chmod +x "$0"
 # 7. Start application
 echo "--> Launching Dashboard on http://127.0.0.1:8000..."
 cd "$PROJECT_DIR"
+# Ensure we use the venv's python
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 python3 "main.py"
