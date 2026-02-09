@@ -54,11 +54,11 @@ telegram_signal_parser/
 - **Max SL Distance**: Default 15.00 units (150 pips). Configurable via Dashboard.
 
 ## Web Dashboard
-- **URL**: http://127.0.0.1:8080
+- **URL**: http://127.0.0.1:8000 (configurable)
 - **Features**:
   - Start/Stop parser
-  - Live log monitoring
-  - Configuration management (API keys, channels, trading filters)
+  - Live log monitoring (chronological order)
+  - Configuration management (API keys, channels, trading filters, port)
   - View signal history
 
 ## MQL5 EA Component

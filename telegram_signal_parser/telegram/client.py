@@ -29,6 +29,7 @@ class TelegramSignalClient:
         self.db = DatabaseManager(settings.database_path)
         self.exporter = CSVExporter(settings.export_path)
         self.monitored_channels = set(settings.telegram_channels)
+        logger.debug(f"Initialized TelegramSignalClient with channels: {self.monitored_channels}")
 
     async def start(self) -> None:
         """Start client and begin listening to channels."""
@@ -38,6 +39,7 @@ class TelegramSignalClient:
         self.db.init_tables()
 
         # Handler for New Messages
+        logger.debug(f"Registering NewMessage handler for chats: {list(self.monitored_channels)}")
         self.client.add_event_handler(
             self._on_new_message,
             events.NewMessage(chats=list(self.monitored_channels))
@@ -65,7 +67,15 @@ class TelegramSignalClient:
         message = event.message
         text = message.text or ""
 
-        if not text.strip() or not self._is_potential_signal(text):
+        # Log EVERY message from monitored channels for debugging
+        logger.debug(f"Received message from chat {event.chat_id}: {text[:50]}...")
+
+        if not text.strip():
+            return
+
+        # Check if it looks like a signal before deep parsing
+        if not self._is_potential_signal(text):
+            logger.debug(f"Message {message.id} from {event.chat_id} ignored: not a potential signal")
             return
 
         logger.info(f"--- Processing {'Edit' if is_edit else 'New Message'} ---")

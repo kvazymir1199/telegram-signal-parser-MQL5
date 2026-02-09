@@ -48,19 +48,40 @@ class Settings(BaseSettings):
     )
 
     # Logging
-    log_level: str = Field(default="INFO")
+    log_level: str = Field(default="DEBUG")
     log_file: str = Field(default="./logs/parser.log")
+
+    # Web Settings
+    web_port: int = Field(default=8000, description="Web dashboard port")
 
     # Validators for correct parsing of comma-separated lists from .env
     @field_validator("telegram_channels", mode="before")
     @classmethod
     def parse_channels(cls, v: Any) -> List[int]:
         """Converts comma-separated string to list of integers (Channel IDs)."""
+        from loguru import logger
+        logger.debug(f"Validating telegram_channels: input={v} (type={type(v)})")
+
+        raw_ids = []
         if isinstance(v, str):
-            return [int(item.strip()) for item in v.split(",") if item.strip()]
-        if isinstance(v, (list, tuple)):
-            return [int(item) for item in v]
-        return []
+            raw_ids = [item.strip() for item in v.split(",") if item.strip()]
+        elif isinstance(v, (list, tuple)):
+            raw_ids = [str(item).strip() for item in v]
+        else:
+            logger.warning(f"Unexpected type for telegram_channels: {type(v)}")
+            return []
+
+        result = []
+        for rid in raw_ids:
+            try:
+                # Reverted auto-fix: use ID exactly as provided by user
+                val = int(rid)
+                result.append(val)
+            except ValueError:
+                logger.error(f"Invalid channel ID format: {rid}")
+
+        logger.debug(f"Final parsed channels: {result}")
+        return result
 
     @field_validator("filter_symbols", mode="before")
     @classmethod

@@ -39,10 +39,10 @@ db_manager = DatabaseManager(settings.database_path)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log every incoming request for debugging."""
-    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    """Log every incoming request for debugging (at DEBUG level to avoid noise)."""
+    logger.debug(f"Incoming request: {request.method} {request.url.path}")
     response = await call_next(request)
-    logger.info(f"Response status: {response.status_code}")
+    logger.debug(f"Response status: {response.status_code}")
     return response
 
 @app.on_event("startup")
@@ -74,7 +74,7 @@ async def startup_event():
 
     # Update global settings object
     settings.update_from_db(db_settings)
-    logger.info("Dashboard web server started on http://127.0.0.1:8080")
+    logger.info(f"Dashboard web server started on http://127.0.0.1:{settings.web_port}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -196,7 +196,8 @@ async def apply_settings(
         "max_sl_distance": "MAX_SL_DISTANCE",
         "database_path": "DATABASE_PATH",
         "export_path": "EXPORT_PATH",
-        "log_level": "LOG_LEVEL"
+        "log_level": "LOG_LEVEL",
+        "web_port": "WEB_PORT"
     }
 
     for form_key, db_key in mapping.items():
@@ -276,10 +277,9 @@ async def get_logs():
 
     try:
         with open(log_file, "r") as f:
-            # Read all lines and reverse them to show newest at top
+            # Read last 100 lines
             lines = f.readlines()
-            last_lines = lines[-100:] # Increased to 100 for better context
-            last_lines.reverse()
+            last_lines = lines[-100:]
             # Escape HTML to prevent XSS
             formatted_logs = html.escape("".join(last_lines))
             return HTMLResponse(f'<pre class="whitespace-pre-wrap font-mono text-[10px] leading-tight text-slate-300">{formatted_logs}</pre>')

@@ -29,14 +29,15 @@ class SignalParserApp:
                    "<level>{message}</level>"
         )
 
-        # File output
+        # File output (Dashboard logs) - Filter out web server request noise
         logger.add(
             settings.log_file,
             level=settings.log_level,
             rotation="10 MB",
             retention="7 days",
             compression="zip",
-            encoding="utf-8"
+            encoding="utf-8",
+            filter=lambda record: "web.app" not in record["name"]
         )
 
     def _print_banner(self) -> None:
@@ -50,8 +51,8 @@ class SignalParserApp:
 
     def run_web(self) -> None:
         """Launch the web dashboard."""
-        logger.info("Starting Web Dashboard on http://127.0.0.1:8080")
-        uvicorn.run("web.app:app", host="0.0.0.0", port=8080, log_level="info", reload=False)
+        logger.info(f"Starting Web Dashboard on http://127.0.0.1:{settings.web_port}")
+        uvicorn.run("web.app:app", host="0.0.0.0", port=settings.web_port, log_level="info", reload=False)
 
 
 def main():
