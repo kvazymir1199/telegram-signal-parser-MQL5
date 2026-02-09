@@ -1,6 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM ============================================================
+REM    Telegram Signal Parser: Zero-Touch Setup (Windows)
+REM ============================================================
+
 REM Get the directory where the script is located
 cd /d %~dp0
 
@@ -9,104 +13,91 @@ set PROJECT_DIR=telegram_signal_parser
 set PYTHON_VERSION=3.12.2
 set INSTALLER_NAME=python-installer.exe
 
-echo ============================================================
-echo    Telegram Signal Parser: Zero-Touch Setup (Windows)
-echo ============================================================
-
 REM 1. Check Python installation
 set PYTHON_CMD=
 python --version >nul 2>&1
-if %errorlevel% equ 0 (
-    set PYTHON_CMD=python
-) else (
-    py --version >nul 2>&1
-    if %errorlevel% equ 0 (
-        set PYTHON_CMD=py
-    ) else (
-        python3 --version >nul 2>&1
-        if %errorlevel% equ 0 (
-            set PYTHON_CMD=python3
-        )
-    )
-)
+if %errorlevel% equ 0 set PYTHON_CMD=python& goto :PYTHON_FOUND
 
-REM 2. If Python is missing, download and install it
-if "%PYTHON_CMD%"=="" (
-    echo [!] Python not found on your system.
-    echo [*] Downloading Python %PYTHON_VERSION%...
+py --version >nul 2>&1
+if %errorlevel% equ 0 set PYTHON_CMD=py& goto :PYTHON_FOUND
 
-    REM Use curl (built into Windows 10+) to download installer
-    REM Added -f (fail silently on server errors) and better error handling
-    curl -fL "https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe" -o %INSTALLER_NAME%
+python3 --version >nul 2>&1
+if %errorlevel% equ 0 set PYTHON_CMD=python3& goto :PYTHON_FOUND
 
-    REM Check if file exists and is not empty instead of just errorlevel
-    if not exist %INSTALLER_NAME% (
-        echo [X] Failed to download Python installer. File not found.
-        pause
-        exit /b 1
-    )
+REM 2. Python missing -> Download and Install
+echo [!] Python not found on your system.
+echo [*] Downloading Python %PYTHON_VERSION%...
 
-    for %%I in (%INSTALLER_NAME%) do (
-        if %%~zI lss 1000000 (
-            echo [X] Downloaded file is too small. Probably a download error.
-            del %INSTALLER_NAME%
-            pause
-            exit /b 1
-        )
-    )
+REM Use curl (built into Windows 10+)
+curl -fL "https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe" -o %INSTALLER_NAME%
 
-    echo [*] Installing Python... (This may require Administrative privileges)
-    echo [*] Please wait, this could take a minute...
-
-    REM Silent installation with PATH addition
-    start /wait %INSTALLER_NAME% /quiet InstallAllUsers=0 PrependPath=1 Include_test=0
-
-    REM Cleanup installer
-    if exist %INSTALLER_NAME% del %INSTALLER_NAME%
-
-    REM Re-check after installation
-    echo [*] Installation complete. Checking again...
-
-    REM Try common install paths as fallback since PATH doesn't update in current CMD
-    set "USER_PYTHON_PATH=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
-    if exist "!USER_PYTHON_PATH!" (
-        set PYTHON_CMD="!USER_PYTHON_PATH!"
-    ) else (
-        python --version >nul 2>&1
-        if %errorlevel% equ 0 (
-            set PYTHON_CMD=python
-        ) else (
-            echo [X] Python was installed but is not yet in your PATH.
-            echo [!] PLEASE RESTART THIS SCRIPT (run.bat) to continue.
-            pause
-            exit /b 1
-        )
-    )
-)
-
-echo [*] Using Python command: %PYTHON_CMD%
-
-REM 3. Create virtual environment
-if not exist "%VENV_DIR%" (
-    echo --> Creating virtual environment...
-    %PYTHON_CMD% -m venv %VENV_DIR%
-    if %errorlevel% neq 0 (
-        echo [X] Failed to create virtual environment.
-        pause
-        exit /b 1
-    )
-)
-
-REM 4. Activate and install dependencies
-echo --> Activating environment and installing dependencies...
-if exist "%VENV_DIR%\Scripts\activate.bat" (
-    call %VENV_DIR%\Scripts\activate.bat
-) else (
-    echo [X] Activation script not found.
+if not exist %INSTALLER_NAME% (
+    echo [X] Failed to download Python installer.
     pause
     exit /b 1
 )
 
+for %%I in (%INSTALLER_NAME%) do (
+    if %%~zI lss 1000000 (
+        echo [X] Downloaded file is too small. Probably a download error.
+        del %INSTALLER_NAME%
+        pause
+        exit /b 1
+    )
+)
+
+echo [*] Installing Python... (This may require Administrative privileges)
+echo [*] Please wait, this could take a minute...
+
+REM Silent installation with PATH addition
+start /wait %INSTALLER_NAME% /quiet InstallAllUsers=0 PrependPath=1 Include_test=0
+del %INSTALLER_NAME%
+
+echo [*] Installation complete. Checking again...
+
+REM Try to find it in default User folder since PATH didn't update in this window
+set "FALLBACK_PYTHON=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+if exist "%FALLBACK_PYTHON%" (
+    set PYTHON_CMD="%FALLBACK_PYTHON%"
+    goto :PYTHON_FOUND
+)
+
+REM Last attempt via standard command
+python --version >nul 2>&1
+if %errorlevel% equ 0 (
+    set PYTHON_CMD=python
+    goto :PYTHON_FOUND
+)
+
+echo [X] Python was installed but is not yet in your PATH.
+echo [!] PLEASE CLOSE THIS WINDOW AND START run.bat AGAIN.
+pause
+exit /b 1
+
+:PYTHON_FOUND
+echo [*] Using Python command: %PYTHON_CMD%
+
+REM 3. Create virtual environment
+if exist "%VENV_DIR%" goto :VENV_EXISTS
+echo --> Creating virtual environment...
+%PYTHON_CMD% -m venv %VENV_DIR%
+if %errorlevel% neq 0 (
+    echo [X] Failed to create virtual environment.
+    pause
+    exit /b 1
+)
+
+:VENV_EXISTS
+REM 4. Activate and install dependencies
+echo --> Activating environment and installing dependencies...
+set "ACTIVATE_PATH=%VENV_DIR%\Scripts\activate.bat"
+if not exist "%ACTIVATE_PATH%" (
+    echo [X] Activation script not found at %ACTIVATE_PATH%
+    pause
+    exit /b 1
+)
+
+call "%ACTIVATE_PATH%"
 python -m pip install --upgrade pip
 pip install -r %PROJECT_DIR%\requirements.txt
 
