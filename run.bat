@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Get the directory where the script is located
+REM Get the directory where the script is located
 cd /d %~dp0
 
 set VENV_DIR=venv
@@ -13,7 +13,7 @@ echo ============================================================
 echo    Telegram Signal Parser: Zero-Touch Setup (Windows)
 echo ============================================================
 
-:: 1. Check Python installation
+REM 1. Check Python installation
 set PYTHON_CMD=
 python --version >nul 2>&1
 if %errorlevel% equ 0 (
@@ -30,44 +30,44 @@ if %errorlevel% equ 0 (
     )
 )
 
-:: 2. If Python is missing, download and install it
+REM 2. If Python is missing, download and install it
 if "%PYTHON_CMD%"=="" (
     echo [!] Python not found on your system.
     echo [*] Downloading Python %PYTHON_VERSION%...
 
-    :: Use curl (built into Windows 10+) to download installer
-    :: Added -f (fail silently on server errors) and better error handling
+    REM Use curl (built into Windows 10+) to download installer
+    REM Added -f (fail silently on server errors) and better error handling
     curl -fL "https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe" -o %INSTALLER_NAME%
 
-    :: Check if file exists and is not empty instead of just errorlevel
+    REM Check if file exists and is not empty instead of just errorlevel
     if not exist %INSTALLER_NAME% (
         echo [X] Failed to download Python installer. File not found.
         pause
         exit /b 1
     )
 
-    for %%I in (%INSTALLER_NAME%) do if %%~zI lss 1000000 (
-        echo [X] Downloaded file is too small. Probably a download error.
-        del %INSTALLER_NAME%
-        pause
-        exit /b 1
+    for %%I in (%INSTALLER_NAME%) do (
+        if %%~zI lss 1000000 (
+            echo [X] Downloaded file is too small. Probably a download error.
+            del %INSTALLER_NAME%
+            pause
+            exit /b 1
+        )
     )
 
     echo [*] Installing Python... (This may require Administrative privileges)
     echo [*] Please wait, this could take a minute...
 
-    :: Silent installation with PATH addition
+    REM Silent installation with PATH addition
     start /wait %INSTALLER_NAME% /quiet InstallAllUsers=0 PrependPath=1 Include_test=0
 
-    :: Cleanup installer
-    del %INSTALLER_NAME%
+    REM Cleanup installer
+    if exist %INSTALLER_NAME% del %INSTALLER_NAME%
 
-    :: Re-check after installation
-    :: We need to refresh environment variables in current session if possible,
-    :: but usually a simple re-search in default paths works.
+    REM Re-check after installation
     echo [*] Installation complete. Checking again...
 
-    :: Try common install paths as fallback since PATH doesn't update in current CMD
+    REM Try common install paths as fallback since PATH doesn't update in current CMD
     set "USER_PYTHON_PATH=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
     if exist "!USER_PYTHON_PATH!" (
         set PYTHON_CMD="!USER_PYTHON_PATH!"
@@ -86,7 +86,7 @@ if "%PYTHON_CMD%"=="" (
 
 echo [*] Using Python command: %PYTHON_CMD%
 
-:: 3. Create virtual environment
+REM 3. Create virtual environment
 if not exist "%VENV_DIR%" (
     echo --> Creating virtual environment...
     %PYTHON_CMD% -m venv %VENV_DIR%
@@ -97,13 +97,20 @@ if not exist "%VENV_DIR%" (
     )
 )
 
-:: 4. Activate and install dependencies
+REM 4. Activate and install dependencies
 echo --> Activating environment and installing dependencies...
-call %VENV_DIR%\Scripts\activate.bat
+if exist "%VENV_DIR%\Scripts\activate.bat" (
+    call %VENV_DIR%\Scripts\activate.bat
+) else (
+    echo [X] Activation script not found.
+    pause
+    exit /b 1
+)
+
 python -m pip install --upgrade pip
 pip install -r %PROJECT_DIR%\requirements.txt
 
-:: 5. Clean up old processes on port 8000
+REM 5. Clean up old processes on port 8000
 echo --> Checking for hung processes on port 8000...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
     if not "%%a"=="" (
@@ -112,13 +119,13 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') 
     )
 )
 
-:: 6. Create necessary directories
+REM 6. Create necessary directories
 echo --> Preparing environment...
 if not exist "%PROJECT_DIR%\data" mkdir "%PROJECT_DIR%\data"
 if not exist "%PROJECT_DIR%\logs" mkdir "%PROJECT_DIR%\logs"
 if not exist "%PROJECT_DIR%\data_export" mkdir "%PROJECT_DIR%\data_export"
 
-:: 7. Start application
+REM 7. Start application
 echo --> Launching Dashboard on http://127.0.0.1:8000...
 cd %PROJECT_DIR%
 set PYTHONPATH=%PYTHONPATH%;%CD%
