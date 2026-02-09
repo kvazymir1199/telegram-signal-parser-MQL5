@@ -16,11 +16,17 @@ cd telegram-signal-parser-MQL5
 ```
 
 ### 2. Launch the Service
-The project includes an automated setup script that creates a virtual environment, installs all dependencies, and launches the dashboard.
+The project includes automated setup scripts that create a virtual environment, install all dependencies, and launch the dashboard.
 
-Run the following command:
+**For Linux / macOS:**
 ```bash
 ./run.sh
+```
+
+**For Windows:**
+Double-click `run.bat` or run it from CMD/PowerShell:
+```cmd
+run.bat
 ```
 
 ### 3. Access the Dashboard
