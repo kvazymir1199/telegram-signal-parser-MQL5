@@ -37,8 +37,8 @@ class Settings(BaseSettings):
 
     # Export
     export_path: str = Field(
-        default=str(BASE_DIR / "mt5_signals" / "signals.csv"),
-        description="Path to export CSV file for MT5"
+        default=str(BASE_DIR / "data_export" / "signals.csv"),
+        description="Path to export CSV file"
     )
 
     # Trading Filters

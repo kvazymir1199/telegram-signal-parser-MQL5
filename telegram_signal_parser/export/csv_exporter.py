@@ -7,14 +7,14 @@ from loguru import logger
 from database.models import Signal, SignalStatus
 
 class CSVExporter:
-    """Class to export trading signals from DB to CSV for MQL5 EA."""
+    """Class to export trading signals from DB to CSV."""
 
     def __init__(self, export_path: str):
         """
         Initialize exporter.
 
         Args:
-            export_path: Path where CSV file will be saved (e.g., './mt5_signals/signals.csv').
+            export_path: Path where CSV file will be saved (e.g., './data_export/signals.csv').
         """
         self.export_path = Path(export_path)
         self._ensure_directory()
@@ -30,7 +30,7 @@ class CSVExporter:
         Format: signal_id,symbol,direction,entry_min,entry_max,stop_loss,tp1,tp2,timestamp,status
         """
         try:
-            # Using utf-8-sig (with BOM) for best compatibility with MT5
+            # Using utf-8-sig (with BOM) for best compatibility
             with open(self.export_path, mode='w', newline='', encoding='utf-8-sig') as f:
                 writer = csv.writer(f)
 
@@ -62,7 +62,7 @@ class CSVExporter:
             return False
 
     def clear_export(self) -> None:
-        """Clear the signal file (e.g. after EA processed everything)."""
+        """Clear the signal file (e.g. after signals are processed)."""
         if self.export_path.exists():
             try:
                 self.export_path.unlink()

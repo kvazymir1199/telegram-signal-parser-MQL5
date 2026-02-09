@@ -14,7 +14,7 @@ from export.csv_exporter import CSVExporter
 
 
 class TelegramSignalClient:
-    """Client for monitoring Telegram channels and updating signal commands in the database."""
+    """Client for monitoring Telegram channels and saving signals to the database."""
 
     def __init__(self):
         """Initialize client and database manager."""
@@ -120,7 +120,7 @@ class TelegramSignalClient:
             if not schema:
                 return
 
-            # Update existing signal to MODIFY command for EA
+            # Update existing signal to MODIFY status
             update_data = schema.model_dump(exclude={'status'})
             update_data["status"] = SignalStatus.MODIFY.value
             self.db.update_signal(existing_signal.id, update_data)
@@ -129,15 +129,15 @@ class TelegramSignalClient:
                 logger.debug(f"Message {message.id} already exists. Skipping.")
                 return
 
-            # Validate and Save New Signal with PROCESS command
+            # Validate and Save New Signal with PROCESS status
             schema = self._create_signal_schema(message, chat_id, parsed, content_hash, SignalStatus.PROCESS)
             if not schema:
                 return
 
             signal_id = self.db.save_signal(schema.model_dump())
 
-        # 5. Export to CSV for EA
-        self._export_to_mt5()
+        # 5. Export to CSV
+        self._export_signals()
 
         # 6. Log Details
         log_msg = (
@@ -186,11 +186,11 @@ class TelegramSignalClient:
         )
         logger.warning(log_msg)
 
-    def _export_to_mt5(self) -> None:
+    def _export_signals(self) -> None:
         """Fetch latest active signals and export them to CSV."""
         with self.db.get_session() as session:
             from sqlalchemy import select
-            # Get only signals that EA needs to process or modify
+            # Get only signals that need processing
             stmt = select(Signal).where(Signal.status.in_([SignalStatus.PROCESS.value, SignalStatus.MODIFY.value]))
             result = session.execute(stmt)
             active_signals = result.scalars().all()

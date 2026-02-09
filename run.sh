@@ -42,7 +42,7 @@ rm -f "$PROJECT_DIR"/*.session-journal 2>/dev/null || true
 
 # 6. Create necessary directories and set permissions
 echo "--> Preparing environment..."
-mkdir -p "$PROJECT_DIR/data" "$PROJECT_DIR/logs" "$PROJECT_DIR/mt5_signals"
+mkdir -p "$PROJECT_DIR/data" "$PROJECT_DIR/logs" "$PROJECT_DIR/data_export"
 chmod +x "$0"
 
 # 7. Start application

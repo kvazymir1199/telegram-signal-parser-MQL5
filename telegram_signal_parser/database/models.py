@@ -18,11 +18,11 @@ class SignalDirection(str, Enum):
 
 class SignalStatus(str, Enum):
     """
-    Signal processing statuses acting as commands for the EA.
+    Signal processing statuses.
     """
-    PROCESS = "PROCESS"   # New signal to be opened by EA
-    MODIFY = "MODIFY"     # Signal prices updated, EA should modify order
-    DONE = "DONE"         # EA completed processing this signal
+    PROCESS = "PROCESS"   # New signal to be processed
+    MODIFY = "MODIFY"     # Signal prices updated
+    DONE = "DONE"         # Completed processing this signal
     INVALID = "INVALID"   # Internal status for logically incorrect signals
     ERROR = "ERROR"       # Error during processing
 

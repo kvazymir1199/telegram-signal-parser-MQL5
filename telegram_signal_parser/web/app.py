@@ -13,7 +13,7 @@ from config.settings import settings
 from database.connection import DatabaseManager
 from telegram.client import TelegramSignalClient
 
-app = FastAPI(title="Telegram Signal Parser Dashboard")
+app = FastAPI(title="Telegram Signal Parser Service")
 
 # Add CORS middleware to allow HTMX requests from any local origin
 app.add_middleware(
@@ -74,7 +74,7 @@ async def startup_event():
 
     # Update global settings object
     settings.update_from_db(db_settings)
-    logger.info(f"Dashboard web server started on http://127.0.0.1:{settings.web_port}")
+    logger.info(f"Signal Parser Service started on http://127.0.0.1:{settings.web_port}")
 
 @app.on_event("shutdown")
 async def shutdown_event():

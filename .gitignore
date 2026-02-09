@@ -19,15 +19,11 @@ telegram_signal_parser/*.session
 telegram_signal_parser/*.session-journal
 telegram_signal_parser/data/*.db
 telegram_signal_parser/logs/*.log
-telegram_signal_parser/mt5_signals/
+telegram_signal_parser/data_export/
 
 # Trading specific (Data exports)
 *.csv
 *.txt
-
-# MQL5 specifics
-*.ex5
-*.log
 
 # OS generated files
 .DS_Store
