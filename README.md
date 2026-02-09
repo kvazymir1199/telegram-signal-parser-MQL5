@@ -1,47 +1,84 @@
 # Telegram Signal Parser Service
 
-A high-performance Python service that monitors Telegram channels for XAUUSD (Gold) trading signals, parses them using advanced regex patterns, and stores them in a local SQLite database.
+A high-performance Python service that monitors Telegram channels for XAUUSD (Gold) trading signals, parses them using advanced regex patterns, and stores them in a local SQLite database and CSV files for further integration.
 
-## 🚀 Quick Start
+---
 
-1. **Setup Python Environment:**
-   Run the automated setup script:
-   ```bash
-   ./run.sh
-   ```
-   *This will create a virtual environment, install dependencies, and launch the Dashboard.*
+## 🚀 Installation & Setup
 
-2. **Configure via Dashboard:**
-   Open your browser at [http://127.0.0.1:8000](http://127.0.0.1:8000)
-   - Enter your **Telegram API ID** and **API Hash** (get them from [my.telegram.org](https://my.telegram.org)).
-   - Add the **Channel IDs** you want to monitor.
-   - Click **"Apply Changes"**.
+Follow these steps to get the service running on your local machine.
 
-3. **Start Parsing:**
-   Click the **"Start Parser"** button on the Dashboard. Monitor the "Live Parser Logs" to ensure it connects successfully and starts receiving messages.
+### 1. Clone the Repository
+Open your terminal and run:
+```bash
+git clone git@github.com:kvazymir1199/telegram-signal-parser-MQL5.git
+cd telegram-signal-parser-MQL5
+```
 
-## 🛠 System Features
+### 2. Launch the Service
+The project includes an automated setup script that creates a virtual environment, installs all dependencies, and launches the dashboard.
 
-- **Dashboard:** Modern web UI for configuration, real-time monitoring, and process control.
-- **Advanced Parser:** Robust Regex engine specifically tuned for Gold (XAUUSD) signals with support for ranges and multiple targets.
-- **Risk Validation:** Automated signal filtering based on Stop Loss distance and symbol keywords.
-- **Database:** Persistent SQLite3 storage for full signal history and configuration.
-- **Clean Logs:** Separated logging system focusing on parser events without web server noise.
+Run the following command:
+```bash
+./run.sh
+```
+
+### 3. Access the Dashboard
+Once the script finishes, open your web browser and go to:
+**[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+
+---
+
+## ⚙️ Configuration Guide
+
+Before starting the parser, you need to configure your Telegram credentials and the channels you want to monitor.
+
+### Step 1: Telegram Credentials
+1. Obtain your **API ID** and **API Hash** from [my.telegram.org](https://my.telegram.org).
+2. Enter these values along with your **Phone Number** in the **Telegram API Configuration** section of the dashboard.
+3. *Detailed guide available in:* [find_my_group_id.md](./find_my_group_id.md)
+
+### Step 2: Channel Monitoring
+1. Find the numeric ID of the Telegram group you want to monitor (using the guide above).
+2. Add the ID to the **Channel Monitoring** list under the **Trading Filters** section.
+3. Click **"Apply Changes"** to save your settings.
+
+### Step 3: Start Parsing
+1. Click the **"Start Parser"** button.
+2. Monitor the **Live Parser Logs** at the bottom of the dashboard.
+3. You will see a success message once the Telegram client is authorized.
+
+---
+
+## 🛠 Features
+
+- **Automated Directory Picker:** Easily select paths for your database and CSV exports via a visual menu.
+- **Test Signal Generation:** Click **"Send Test Signal"** to instantly verify that the parser, database, and CSV export are working correctly.
+- **Clean Logging:** A dedicated logging system that filters out web server noise, allowing you to focus on signal data.
+- **Signal History:** View all parsed signals in a dedicated history page with detailed extraction info.
+
+---
 
 ## 📁 Project Structure
 
 ```text
 .
 ├── telegram_signal_parser/   # Python service root
-│   ├── web/                  # Dashboard (FastAPI + Tailwind)
-│   ├── parser/               # Signal extraction logic
+│   ├── web/                  # Dashboard (FastAPI + Tailwind + HTMX)
+│   ├── parser/               # Regex extraction logic
 │   ├── database/             # SQLite & SQLAlchemy models
 │   ├── config/               # Pydantic settings & validation
+│   ├── data_export/          # Destination for CSV signal files
 │   └── main.py               # Service entry point
 ├── run.sh                    # Automated setup & launch script
+├── find_my_group_id.md       # Guide for Telegram credentials & IDs
 └── CLAUDE.md                 # Technical guidelines
 ```
 
+---
+
 ## ⚠️ Requirements
-- Python 3.10+
-- Telegram API Credentials (API ID & Hash)
+
+- **Python 3.10+** installed on your system.
+- Active Telegram account and API credentials.
+- Linux, macOS, or Windows (via Git Bash/WSL).
