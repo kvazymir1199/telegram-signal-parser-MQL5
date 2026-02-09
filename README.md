@@ -24,7 +24,11 @@ The project includes automated setup scripts that create a virtual environment, 
 ```
 
 **For Windows:**
-Double-click `run.bat` or run it from CMD/PowerShell:
+Double-click `run.bat` or run it from PowerShell:
+```powershell
+.\run.bat
+```
+Or from CMD:
 ```cmd
 run.bat
 ```
