@@ -13,7 +13,7 @@ Telegram Signal Parser Service - a standalone Python service that:
 ## Architecture
 
 ```
-Telegram → [Python Parser Service] → SQLite3 Database → Web Dashboard
+Telegram → [Python Parser Service] → SQLite3 Database → [MQL5 Expert Advisor]
 ```
 
 ## Python Component
@@ -57,6 +57,38 @@ telegram_signal_parser/
   - Clean log monitoring (filtered from web noise).
   - Persistent configuration (API keys, Channel IDs, Filters).
   - Signal history view.
+
+## MQL5 Component (EA)
+
+### Tech Stack
+- MQL5 (Pure, no DLLs)
+- SQLite (Native Database API)
+- Standard Library (CTrade, CPositionInfo, CSymbolInfo)
+
+### Structure
+```
+mql5/
+├── TelegramSignalExpert.mq5     # Main entry point (OnTimer loop)
+└── Include/TelegramExpert/
+    ├── Defines.mqh             # Shared types, enums, constants
+    ├── Database.mqh            # CDatabaseManager (SQLite wrapper)
+    ├── RiskManager.mqh         # CRiskManager (JST time, Daily Loss, Lot Calc)
+    ├── TradeEngine.mqh         # CTradeEngine (Trade execution, BE logic)
+    └── SignalManager.mqh       # CSignalManager (Orchestrator)
+```
+
+### Key Logic
+- **Execution**: One signal → Two orders (TP1 and TP2).
+- **Entry**: Range check + 0.03 XAUUSD tolerance.
+- **Management**: SL moved to Breakeven for Order 2 when Order 1 hits TP1.
+- **Safety**: 3% Daily Equity Loss limit (monitored in JST time).
+- **Timing**: Daily reset at 07:10 JST (fixed point for equity monitoring).
+
+## MQL5 Development Protocol
+
+- **Mandatory Review:** For any modification or creation of MQL5 files (`.mq5`, `.mqh`), you MUST invoke the `everything-claude-code:code-reviewer` agent to perform a comprehensive review of the changes.
+- **Reference Standards:** The review must ensure compliance with `.claude/agents/mt5-coder.md` and the `docs/mql5-expert-roadmap.md`.
+- **Validation:** Ensure that the logic follows the "one active signal - two orders" rule and adheres to the risk management limits (3% daily loss).
 
 ## Development Notes
 
