@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Database
     database_path: str = Field(
-        default=str(BASE_DIR / "data" / "signals.db"),
+        default="signals.sqlite3",
         description="Path to SQLite database file"
     )
 

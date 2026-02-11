@@ -89,12 +89,18 @@ if %errorlevel% neq 0 (
 
 :VENV_EXISTS
 REM 4. Activate and install dependencies
-echo --> Activating environment and installing dependencies...
+echo --^> Activating environment and installing dependencies...
 set "ACTIVATE_PATH=%VENV_DIR%\Scripts\activate.bat"
 if not exist "%ACTIVATE_PATH%" (
-    echo [X] Activation script not found at %ACTIVATE_PATH%
-    pause
-    exit /b 1
+    echo [!] venv exists but is missing Windows activation script.
+    echo [*] Recreating virtual environment for Windows...
+    rd /s /q "%VENV_DIR%"
+    %PYTHON_CMD% -m venv %VENV_DIR%
+    if !errorlevel! neq 0 (
+        echo [X] Failed to recreate virtual environment.
+        pause
+        exit /b 1
+    )
 )
 
 call "%ACTIVATE_PATH%"

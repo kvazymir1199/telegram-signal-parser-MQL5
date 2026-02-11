@@ -11,6 +11,7 @@
 #include <Trade\Trade.mqh>
 #include <Trade\PositionInfo.mqh>
 #include <Trade\SymbolInfo.mqh>
+#include "Logger.mqh"
 
 //+------------------------------------------------------------------+
 //| Класс для исполнения торговых операций и управления позициями    |
@@ -22,6 +23,7 @@ private:
    CPositionInfo     m_position;       // Класс для получения инфо о позициях
    CSymbolInfo       m_symbol;         // Класс для данных символа
    int               m_magic;          // Magic Number
+   CLogger           m_log;            // Логгер
 
 public:
                      CTradeEngine();
@@ -48,7 +50,7 @@ private:
 //+------------------------------------------------------------------+
 //| Constructor                                                      |
 //+------------------------------------------------------------------+
-CTradeEngine::CTradeEngine() : m_magic(0)
+CTradeEngine::CTradeEngine() : m_magic(0), m_log("TradeEngine")
 {
 }
 
@@ -97,7 +99,9 @@ bool CTradeEngine::CheckEntryRange(const SSignalData &signal, double &current_pr
       if(current_price < signal.entry_min && (signal.entry_min - current_price) <= MAX_ENTRY_DEVIATION)
          return true;
    }
-
+   
+   m_log.Debug(StringFormat("Цена %.5f вне диапазона [%.5f - %.5f] (+0.03 dev).", 
+               current_price, signal.entry_min, signal.entry_max));
    return false;
 }
 
@@ -126,13 +130,15 @@ bool CTradeEngine::OpenDualPosition(const SSignalData &signal, double lot)
    // Если хоть один ордер открылся без SL или вообще не открылся - закрываем всё для безопасности
    if(!res1 || !res2)
    {
-      PrintFormat("TE: Ошибка открытия дуальной позиции. Ордер1: %s, Ордер2: %s",
+      m_log.Error(StringFormat("Ошибка открытия дуальной позиции. Ордер1: %s, Ордер2: %s",
                   res1 ? "OK" : m_trade.ResultRetcodeDescription(),
-                  res2 ? "OK" : m_trade.ResultRetcodeDescription());
+                  res2 ? "OK" : m_trade.ResultRetcodeDescription()));
       CloseAll();
       return false;
    }
 
+   m_log.Info(StringFormat("Дуальная позиция открыта для сигнала ID:%lld. Tickets: %lld, %lld", 
+              signal.id, m_trade.ResultOrder(), m_trade.ResultDeal()));
    return true;
 }
 

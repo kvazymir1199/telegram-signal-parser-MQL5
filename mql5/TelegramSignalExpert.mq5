@@ -24,8 +24,9 @@ input double        InpMaxDailyLoss  = 3.0;            // Макс. дневно
 input string        InpStartTimeJST  = "07:10";        // Начало торгового дня (JST)
 
 input group "=== Настройки базы данных ==="
-input string        InpDatabasePath  = "telegram_signals.sqlite3"; // Путь к файлу БД
+input string        InpDatabasePath  = "signals.sqlite3";           // Путь к файлу БД (в MQL5/Files)
 
+//--- Глобальные объекты
 //--- Глобальные объекты
 CSignalManager g_manager;
 
@@ -35,7 +36,8 @@ CSignalManager g_manager;
 int OnInit()
 {
    // Инициализация главного менеджера
-   if(!g_manager.Init(InpDatabasePath, _Symbol, InpMagicNumber, InpLotType, InpLotValue, InpMaxDailyLoss, InpStartTimeJST))
+   bool init_res = g_manager.Init(InpDatabasePath, _Symbol, InpMagicNumber, InpLotType, InpLotValue, InpMaxDailyLoss, InpStartTimeJST);
+   if(!init_res)
    {
       Print("ОШИБКА: Не удалось инициализировать SignalManager.");
       return(INIT_FAILED);

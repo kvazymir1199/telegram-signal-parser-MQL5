@@ -9,6 +9,7 @@
 
 #include "Defines.mqh"
 #include <Trade\SymbolInfo.mqh>
+#include "Logger.mqh"
 
 //+------------------------------------------------------------------+
 //| Класс для управления рисками, лотами и временем JST              |
@@ -20,6 +21,7 @@ private:
    double            m_starting_equity;// Эквити на начало торгового дня (07:10 JST)
    bool              m_trading_locked; // Флаг блокировки торговли
    datetime          m_next_reset_time;// Время следующего сброса лимитов (GMT)
+   CLogger           m_log;            // Логгер
 
 public:
                      CRiskManager();
@@ -39,9 +41,11 @@ public:
    // Получение текущего времени JST
    datetime          GetJSTTime() { return TimeGMT() + JST_OFFSET; }
 
+   // Нормализация лота под требования брокера
+   double            NormalizeLot(double lot);
+
 private:
    void              UpdateResetTime();
-   double            NormalizeLot(double lot);
 
    int               m_target_hour;    // Час сброса (JST)
    int               m_target_min;     // Минута сброса (JST)
@@ -55,7 +59,8 @@ CRiskManager::CRiskManager() :
    m_trading_locked(false),
    m_next_reset_time(0),
    m_target_hour(7),
-   m_target_min(10)
+   m_target_min(10),
+   m_log("RiskManager")
 {
 }
 
@@ -98,11 +103,16 @@ bool CRiskManager::IsTradingAllowed()
    {
       if(m_trading_locked)
       {
-         Print("RM: Лимиты сброшены. Торговля разрешена.");
+         m_log.Info("Лимиты сброшены. Торговля разрешена.");
          m_trading_locked = false;
       }
       m_starting_equity = AccountInfoDouble(ACCOUNT_EQUITY);
       UpdateResetTime();
+   }
+   
+   if(m_trading_locked)
+   {
+      m_log.Warn("Торговля заблокирована из-за превышения дневного лимита убытка.");
    }
 
    return !m_trading_locked;
@@ -156,8 +166,8 @@ void CRiskManager::CheckDailyLoss(double max_loss_percent)
    if(draw_down >= max_loss_percent)
    {
       m_trading_locked = true;
-      PrintFormat("RM: КРИТИЧЕСКИЙ УБЫТОК! %.2f%% >= %.2f%%. Торговля заблокирована до следующего дня (JST).",
-                  draw_down, max_loss_percent);
+      m_log.Error(StringFormat("КРИТИЧЕСКИЙ УБЫТОК! %.2f%% >= %.2f%%. Торговля заблокирована до следующего дня (JST).",
+                  draw_down, max_loss_percent));
    }
 }
 

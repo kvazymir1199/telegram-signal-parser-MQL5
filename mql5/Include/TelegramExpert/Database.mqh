@@ -34,6 +34,7 @@ public:
 private:
    ENUM_SIGNAL_DIRECTION StringToDirection(string dir);
    string                StatusToDBString(const ENUM_SIGNAL_STATUS status);
+   bool                  CheckAndCreateTable();
 };
 
 //+------------------------------------------------------------------+
@@ -68,6 +69,14 @@ bool CDatabaseManager::Open(const string path)
    }
 
    m_db_path = path;
+   
+   // Проверяем/создаем таблицу
+   if(!CheckAndCreateTable())
+   {
+      Close();
+      return false;
+   }
+
    return true;
 }
 
@@ -122,12 +131,12 @@ int CDatabaseManager::GetPendingSignals(SSignalData &signals[])
       DatabaseColumnDouble(request, 7, data.stop_loss);
       DatabaseColumnDouble(request, 8, data.take_profit_1);
 
-      // Проверка на NULL для опциональных TP
-      if(DatabaseColumnType(request, 9) != DATABASE_TYPE_NULL)
+      // Проверка на NULL для опциональных TP (5 = DATABASE_TYPE_NULL)
+      if(DatabaseColumnType(request, 9) != 5)
          DatabaseColumnDouble(request, 9, data.take_profit_2);
       else data.take_profit_2 = 0;
 
-      if(DatabaseColumnType(request, 10) != DATABASE_TYPE_NULL)
+      if(DatabaseColumnType(request, 10) != 5)
          DatabaseColumnDouble(request, 10, data.take_profit_3);
       else data.take_profit_3 = 0;
 
@@ -193,7 +202,7 @@ bool CDatabaseManager::UpdateStatus(const long signal_id, const ENUM_SIGNAL_STAT
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_DIRECTION CDatabaseManager::StringToDirection(string dir)
 {
-   dir.ToUpper();
+   StringToUpper(dir);
    if(dir == "BUY" || dir == "LONG") return DIR_BUY;
    if(dir == "SELL" || dir == "SHORT") return DIR_SELL;
    return DIR_NONE;
@@ -213,4 +222,34 @@ string CDatabaseManager::StatusToDBString(const ENUM_SIGNAL_STATUS status)
       case STATUS_ERROR:   return "ERROR";
    }
    return "UNKNOWN";
+}
+//+------------------------------------------------------------------+
+//| Создание таблицы если она отсутствует                            |
+//+------------------------------------------------------------------+
+bool CDatabaseManager::CheckAndCreateTable()
+{
+   if(m_db_handle == INVALID_HANDLE) return false;
+
+   string sql = "CREATE TABLE IF NOT EXISTS signals ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "telegram_message_id INTEGER, "
+                "telegram_channel_id INTEGER, "
+                "symbol TEXT, "
+                "direction TEXT, "
+                "entry_min REAL, "
+                "entry_max REAL, "
+                "stop_loss REAL, "
+                "take_profit_1 REAL, "
+                "take_profit_2 REAL, "
+                "take_profit_3 REAL, "
+                "status TEXT, "
+                "updated_at DATETIME"
+                ");";
+
+   if(!DatabaseExecute(m_db_handle, sql))
+   {
+      PrintFormat("DB: Ошибка создания таблицы. Код: %d", GetLastError());
+      return false;
+   }
+   return true;
 }
