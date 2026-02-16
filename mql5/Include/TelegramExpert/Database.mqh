@@ -64,7 +64,7 @@ bool CDatabaseManager::Open(const string path)
 
    if(m_db_handle == INVALID_HANDLE)
    {
-      PrintFormat("DB: Ошибка открытия %s. Код ошибки: %d", path, GetLastError());
+      PrintFormat("DB: Error opening %s. Error code: %d", path, GetLastError());
       return false;
    }
 
@@ -110,7 +110,7 @@ int CDatabaseManager::GetPendingSignals(SSignalData &signals[])
    int request = DatabasePrepare(m_db_handle, sql);
    if(request == INVALID_HANDLE)
    {
-      PrintFormat("DB: Ошибка DatabasePrepare. Код: %d", GetLastError());
+      PrintFormat("DB: DatabasePrepare error. Code: %d", GetLastError());
       return 0;
    }
 
@@ -177,20 +177,20 @@ bool CDatabaseManager::UpdateStatus(const long signal_id, const ENUM_SIGNAL_STAT
    // Запуск транзакции для надежности
    if(!DatabaseTransactionBegin(m_db_handle))
    {
-      PrintFormat("DB: Ошибка TransactionBegin. Код: %d", GetLastError());
+      PrintFormat("DB: TransactionBegin error. Code: %d", GetLastError());
       return false;
    }
 
    if(!DatabaseExecute(m_db_handle, sql))
    {
-      PrintFormat("DB: Ошибка UPDATE. Код: %d. SQL: %s", GetLastError(), sql);
+      PrintFormat("DB: UPDATE error. Code: %d. SQL: %s", GetLastError(), sql);
       DatabaseTransactionRollback(m_db_handle);
       return false;
    }
 
    if(!DatabaseTransactionCommit(m_db_handle))
    {
-      PrintFormat("DB: Ошибка TransactionCommit. Код: %d", GetLastError());
+      PrintFormat("DB: TransactionCommit error. Code: %d", GetLastError());
       return false;
    }
 
@@ -248,7 +248,7 @@ bool CDatabaseManager::CheckAndCreateTable()
 
    if(!DatabaseExecute(m_db_handle, sql))
    {
-      PrintFormat("DB: Ошибка создания таблицы. Код: %d", GetLastError());
+      PrintFormat("DB: Table creation error. Code: %d", GetLastError());
       return false;
    }
    return true;

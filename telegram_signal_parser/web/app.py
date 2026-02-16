@@ -64,7 +64,6 @@ async def startup_event():
             "TELEGRAM_CHANNELS": ",".join(map(str, settings.telegram_channels)),
             "FILTER_SYMBOLS": ",".join(settings.filter_symbols),
             "DATABASE_PATH": settings.database_path,
-            "EXPORT_PATH": settings.export_path,
             "MAX_SL_DISTANCE": str(settings.max_sl_distance),
             "LOG_LEVEL": settings.log_level,
             "LOG_FILE": settings.log_file
@@ -195,7 +194,6 @@ async def apply_settings(
         "filter_symbols": "FILTER_SYMBOLS",
         "max_sl_distance": "MAX_SL_DISTANCE",
         "database_path": "DATABASE_PATH",
-        "export_path": "EXPORT_PATH",
         "log_level": "LOG_LEVEL",
         "web_port": "WEB_PORT"
     }
@@ -288,17 +286,12 @@ async def test_signal():
         # 2. Save to DB
         db_manager.save_signal(test_data)
 
-        # 3. Trigger Export
-        from telegram.client import TelegramSignalClient
-        temp_client = TelegramSignalClient()
-        temp_client._export_signals()
-
-        logger.success("Test signal generated and exported to CSV.")
+        logger.success("Test signal generated.")
         return HTMLResponse(
             status_code=200,
             content='<div hx-swap-oob="afterbegin:#flash-container">'
                     '<div class="bg-green-600 text-white p-4 rounded-xl shadow-lg mb-4 flex justify-between items-center" id="test-popup">'
-                    '<div><i class="fa-solid fa-vial mr-2"></i> <strong>Test Success:</strong> Dummy signal generated and exported to CSV!</div>'
+                    '<div><i class="fa-solid fa-vial mr-2"></i> <strong>Test Success:</strong> Dummy signal generated!</div>'
                     '<button onclick="this.parentElement.remove()" class="ml-4 opacity-70 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button></div></div>'
         )
     except Exception as e:
@@ -321,7 +314,7 @@ async def get_logs():
         return HTMLResponse('<div class="text-slate-500 italic">No log file found yet...</div>')
 
     try:
-        with open(log_file, "r") as f:
+        with open(log_file, "r", encoding="utf-8") as f:
             # Read last 100 lines
             lines = f.readlines()
             last_lines = lines[-100:]

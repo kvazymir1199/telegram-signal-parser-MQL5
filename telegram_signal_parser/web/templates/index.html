@@ -257,32 +257,17 @@
                                     <option value="ERROR" {% if settings.LOG_LEVEL == 'ERROR' %}selected{% endif %}>ERROR</option>
                                 </select>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-slate-400">Database Path</label>
-                                    <div class="relative">
-                                        <input type="text" id="database_path" name="database_path" value="{{ settings.DATABASE_PATH }}" class="w-full p-3 pr-12 rounded-xl input-field">
-                                        <button type="button"
-                                                hx-get="/settings/browse?target_input=database_path"
-                                                hx-target="#picker-content"
-                                                onclick="openPicker()"
-                                                class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-blue-400 transition-colors">
-                                            <i class="fa-solid fa-folder-tree"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-slate-400">Export Path (CSV)</label>
-                                    <div class="relative">
-                                        <input type="text" id="export_path" name="export_path" value="{{ settings.EXPORT_PATH }}" class="w-full p-3 pr-12 rounded-xl input-field">
-                                        <button type="button"
-                                                hx-get="/settings/browse?target_input=export_path"
-                                                hx-target="#picker-content"
-                                                onclick="openPicker()"
-                                                class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-blue-400 transition-colors">
-                                            <i class="fa-solid fa-folder-tree"></i>
-                                        </button>
-                                    </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-400">Database Path</label>
+                                <div class="relative">
+                                    <input type="text" id="database_path" name="database_path" value="{{ settings.DATABASE_PATH }}" class="w-full p-3 pr-12 rounded-xl input-field">
+                                    <button type="button"
+                                            hx-get="/settings/browse?target_input=database_path"
+                                            hx-target="#picker-content"
+                                            onclick="openPicker()"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-blue-400 transition-colors">
+                                        <i class="fa-solid fa-folder-tree"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div class="space-y-2">
@@ -373,8 +358,6 @@
                 // Append default filename if missing
                 if (targetId === 'database_path' && !path.toLowerCase().endsWith('.db')) {
                     finalPath = path + (path.endsWith(sep) ? '' : sep) + 'signals.db';
-                } else if (targetId === 'export_path' && !path.toLowerCase().endsWith('.csv')) {
-                    finalPath = path + (path.endsWith(sep) ? '' : sep) + 'signals.csv';
                 }
 
                 input.value = finalPath;

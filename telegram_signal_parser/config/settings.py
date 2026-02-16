@@ -35,12 +35,6 @@ class Settings(BaseSettings):
         description="Path to SQLite database file"
     )
 
-    # Export
-    export_path: str = Field(
-        default=str(BASE_DIR / "data_export" / "signals.csv"),
-        description="Path to export CSV file"
-    )
-
     # Trading Filters
     max_sl_distance: float = Field(
         default=15.0,

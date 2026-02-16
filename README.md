@@ -1,6 +1,6 @@
 # Telegram Signal Parser Service
 
-A high-performance Python service that monitors Telegram channels for XAUUSD (Gold) trading signals, parses them using advanced regex patterns, and stores them in a local SQLite database and CSV files for further integration.
+A high-performance Python service that monitors Telegram channels for XAUUSD (Gold) trading signals, parses them using advanced regex patterns, and stores them in a local SQLite database for further integration.
 
 ---
 
@@ -62,8 +62,8 @@ Before starting the parser, you need to configure your Telegram credentials and 
 
 ## 🛠 Features
 
-- **Automated Directory Picker:** Easily select paths for your database and CSV exports via a visual menu.
-- **Test Signal Generation:** Click **"Send Test Signal"** to instantly verify that the parser, database, and CSV export are working correctly.
+- **Automated Directory Picker:** Easily select path for your database via a visual menu.
+- **Test Signal Generation:** Click **"Send Test Signal"** to instantly verify that the parser and database are working correctly.
 - **Clean Logging:** A dedicated logging system that filters out web server noise, allowing you to focus on signal data.
 - **Signal History:** View all parsed signals in a dedicated history page with detailed extraction info.
 
@@ -78,7 +78,6 @@ Before starting the parser, you need to configure your Telegram credentials and 
 │   ├── parser/               # Regex extraction logic
 │   ├── database/             # SQLite & SQLAlchemy models
 │   ├── config/               # Pydantic settings & validation
-│   ├── data_export/          # Destination for CSV signal files
 │   └── main.py               # Service entry point
 ├── run.sh                    # Automated setup & launch script
 ├── find_my_group_id.md       # Guide for Telegram credentials & IDs

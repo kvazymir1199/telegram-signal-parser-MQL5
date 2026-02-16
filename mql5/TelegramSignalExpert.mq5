@@ -13,18 +13,19 @@
 #include "Include/TelegramExpert/SignalManager.mqh"
 
 //--- Входные параметры
-input group "=== Торговые настройки ==="
-input ENUM_LOT_TYPE InpLotType       = LOT_FIXED;      // Способ расчета лота
-input double        InpLotValue      = 0.01;           // Значение (объем или % риска)
+input group "=== Trading Settings ==="
+input double        InpLotOrder1     = 0.15;           // Lot Order 1 (TP1)
+input double        InpLotOrder2     = 0.20;           // Lot Order 2 (TP2)
 input int           InpMagicNumber   = 123456;         // Magic Number
-input int           InpTimerInterval = 2;              // Интервал опроса БД (сек)
+input int           InpTimerInterval = 2;              // DB Polling Interval (sec)
 
-input group "=== Риск-менеджмент ==="
-input double        InpMaxDailyLoss  = 3.0;            // Макс. дневной убыток (%)
-input string        InpStartTimeJST  = "07:10";        // Начало торгового дня (JST)
+input group "=== Risk Management ==="
+input double        InpMaxDailyLoss  = 3.0;            // Max Daily Loss (%)
+input double        InpMaxSLDistance = 15.0;           // Max Allowed SL Distance (Price Units)
+input string        InpStartTimeJST  = "07:10";        // Day Start Time (JST)
 
-input group "=== Настройки базы данных ==="
-input string        InpDatabasePath  = "signals.sqlite3";           // Путь к файлу БД (в MQL5/Files)
+input group "=== Database Settings ==="
+input string        InpDatabasePath  = "signals.sqlite3";           // DB File Path (in MQL5/Files)
 
 //--- Глобальные объекты
 //--- Глобальные объекты
@@ -36,21 +37,23 @@ CSignalManager g_manager;
 int OnInit()
 {
    // Инициализация главного менеджера
-   bool init_res = g_manager.Init(InpDatabasePath, _Symbol, InpMagicNumber, InpLotType, InpLotValue, InpMaxDailyLoss, InpStartTimeJST);
+   bool init_res = g_manager.Init(InpDatabasePath, _Symbol, InpMagicNumber, 
+                                 InpLotOrder1, InpLotOrder2, 
+                                 InpMaxDailyLoss, InpMaxSLDistance, InpStartTimeJST);
    if(!init_res)
    {
-      Print("ОШИБКА: Не удалось инициализировать SignalManager.");
+      Print("ERROR: Could not initialize SignalManager.");
       return(INIT_FAILED);
    }
 
    // Установка таймера для опроса БД
    if(!EventSetTimer(InpTimerInterval))
    {
-      Print("ОШИБКА: Не удалось установить таймер.");
+      Print("ERROR: Could not set timer.");
       return(INIT_FAILED);
    }
 
-   PrintFormat("Советник запущен. Символ: %s, Magic: %d, Опрос: %d сек.", _Symbol, InpMagicNumber, InpTimerInterval);
+   PrintFormat("Expert started. Symbol: %s, Magic: %d, Polling: %d sec.", _Symbol, InpMagicNumber, InpTimerInterval);
    return(INIT_SUCCEEDED);
 }
 
@@ -65,7 +68,7 @@ void OnDeinit(const int reason)
    // Очистка ресурсов менеджера
    g_manager.Deinit();
 
-   PrintFormat("Советник остановлен. Причина: %d", reason);
+   PrintFormat("Expert stopped. Reason: %d", reason);
 }
 
 //+------------------------------------------------------------------+

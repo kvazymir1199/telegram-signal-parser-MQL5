@@ -10,7 +10,6 @@ from config.settings import settings
 from parser.signal_parser import SignalParser, ParsedSignal
 from database.connection import DatabaseManager
 from database.models import TradingSignalSchema, SignalStatus, Signal
-from export.csv_exporter import CSVExporter
 
 
 class TelegramSignalClient:
@@ -27,7 +26,6 @@ class TelegramSignalClient:
         )
         self.parser = SignalParser(allowed_symbols=settings.filter_symbols)
         self.db = DatabaseManager(settings.database_path)
-        self.exporter = CSVExporter(settings.export_path)
         self.monitored_channels = set(settings.telegram_channels)
         logger.debug(f"Initialized TelegramSignalClient with channels: {self.monitored_channels}")
 
@@ -136,10 +134,7 @@ class TelegramSignalClient:
 
             signal_id = self.db.save_signal(schema.model_dump())
 
-        # 5. Export to CSV
-        self._export_signals()
-
-        # 6. Log Details
+        # 5. Log Details
         log_msg = (
             f"✅ SIGNAL SAVED: ID={signal_id if 'signal_id' in locals() else existing_signal.id}\n"
             f"   Symbol: {parsed.symbol} | Direction: {parsed.direction}\n"
@@ -185,17 +180,3 @@ class TelegramSignalClient:
             f"   Entry={parsed.entry_min}-{parsed.entry_max}, SL={parsed.stop_loss}, TPs={parsed.take_profits}"
         )
         logger.warning(log_msg)
-
-    def _export_signals(self) -> None:
-        """Fetch latest active signals and export them to CSV."""
-        with self.db.get_session() as session:
-            from sqlalchemy import select
-            # Get only signals that need processing
-            stmt = select(Signal).where(Signal.status.in_([SignalStatus.PROCESS.value, SignalStatus.MODIFY.value]))
-            result = session.execute(stmt)
-            active_signals = result.scalars().all()
-
-            if active_signals:
-                self.exporter.export_signals(list(active_signals))
-            else:
-                self.exporter.clear_export()

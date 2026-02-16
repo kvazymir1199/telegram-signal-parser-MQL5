@@ -36,16 +36,27 @@ public:
    double            CalculateLot(double entry_price, double sl_price, ENUM_LOT_TYPE type, double lot_value);
 
    // Мониторинг эквити
-   void              CheckDailyLoss(double max_loss_percent);
+   void              CheckDailyLoss(double max_loss_percent, long magic);
 
    // Получение текущего времени JST
    datetime          GetJSTTime() { return TimeGMT() + JST_OFFSET; }
+
+   // Методы для инфо-панели
+   double            GetStartingEquity(long magic);
+   double            GetDailyPnL(long magic);
+   double            GetDailyPnLPercent(long magic);
+   bool              IsLocked()           const { return m_trading_locked; }
 
    // Нормализация лота под требования брокера
    double            NormalizeLot(double lot);
 
 private:
    void              UpdateResetTime();
+   double            CalculateDailyPnL(long magic);
+   
+   // Хелперы для расчета профита
+   double            GetPriceAtTime(string symbol, datetime time_gmt);
+   double            CalculateProfit(string symbol, ENUM_POSITION_TYPE type, double lot, double price_open, double price_close);
 
    int               m_target_hour;    // Час сброса (JST)
    int               m_target_min;     // Минута сброса (JST)
@@ -103,7 +114,7 @@ bool CRiskManager::IsTradingAllowed()
    {
       if(m_trading_locked)
       {
-         m_log.Info("Лимиты сброшены. Торговля разрешена.");
+         m_log.Info("Limits reset. Trading allowed.");
          m_trading_locked = false;
       }
       m_starting_equity = AccountInfoDouble(ACCOUNT_EQUITY);
@@ -112,65 +123,198 @@ bool CRiskManager::IsTradingAllowed()
    
    if(m_trading_locked)
    {
-      m_log.Warn("Торговля заблокирована из-за превышения дневного лимита убытка.");
+      m_log.Warn("Trading locked due to daily loss limit excess.");
    }
 
    return !m_trading_locked;
 }
 
 //+------------------------------------------------------------------+
-//| Расчет лота (Фикс или % от риска)                                |
+//| Расчет лота (Только Фикс)                                        |
 //+------------------------------------------------------------------+
 double CRiskManager::CalculateLot(double entry_price, double sl_price, ENUM_LOT_TYPE type, double lot_value)
 {
-   if(type == LOT_FIXED) return NormalizeLot(lot_value);
-
-   // Обновляем данные символа (TickValue может меняться брокером)
-   if(!m_symbol.RefreshRates()) return m_symbol.LotsMin();
-
-   // Расчет на основе процента риска от эквити
-   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   double risk_amount = equity * (lot_value / 100.0);
-
-   double sl_dist_points = MathAbs(entry_price - sl_price) / m_symbol.Point();
-   if(sl_dist_points <= 0) return m_symbol.LotsMin();
-
-   // Расчет стоимости одного пункта лота 1.0
-   double tick_value = m_symbol.TickValue();
-   double tick_size = m_symbol.TickSize();
-   double point = m_symbol.Point();
-
-   if(tick_size <= 0 || tick_value <= 0)
-   {
-      Print("RM: Ошибка данных символа (TickSize/TickValue <= 0)");
-      return m_symbol.LotsMin();
-   }
-
-   // Лот = (Сумма риска) / (Дистанция SL в пунктах * Стоимость пункта)
-   double lot = risk_amount / (sl_dist_points * (tick_value * point / tick_size));
-
-   return NormalizeLot(lot);
+   // Теперь всегда фиксированный лот, нормализуем под требования брокера
+   return NormalizeLot(lot_value);
 }
 
 //+------------------------------------------------------------------+
-//| Проверка дневного убытка                                         |
+//| Проверка дневного убытка (динамический расчет по Magic)           |
 //+------------------------------------------------------------------+
-void CRiskManager::CheckDailyLoss(double max_loss_percent)
+void CRiskManager::CheckDailyLoss(double max_loss_percent, long magic)
 {
    if(m_trading_locked) return;
-   if(m_starting_equity <= 0) m_starting_equity = AccountInfoDouble(ACCOUNT_EQUITY);
 
-   double current_equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   double draw_down = (m_starting_equity - current_equity) / m_starting_equity * 100.0;
+   double daily_pnl = CalculateDailyPnL(magic);
+   double start_equity = AccountInfoDouble(ACCOUNT_EQUITY) - daily_pnl;
+   
+   if(start_equity <= 0) return;
+
+   double draw_down = -daily_pnl / start_equity * 100.0;
 
    if(draw_down >= max_loss_percent)
    {
       m_trading_locked = true;
-      m_log.Error(StringFormat("КРИТИЧЕСКИЙ УБЫТОК! %.2f%% >= %.2f%%. Торговля заблокирована до следующего дня (JST).",
-                  draw_down, max_loss_percent));
+      m_log.Error(StringFormat("CRITICAL LOSS (Magic:%lld)! %.2f%% >= %.2f%%. Trading locked until next session (JST).",
+                  magic, draw_down, max_loss_percent));
    }
 }
 
+//+------------------------------------------------------------------+
+//| Геттеры для инфо-панели                                          |
+//+------------------------------------------------------------------+
+double CRiskManager::GetStartingEquity(long magic) 
+{
+   return AccountInfoDouble(ACCOUNT_EQUITY) - CalculateDailyPnL(magic);
+}
+
+double CRiskManager::GetDailyPnL(long magic)
+{
+   return CalculateDailyPnL(magic);
+}
+
+double CRiskManager::GetDailyPnLPercent(long magic)
+{
+   double start_equity = GetStartingEquity(magic);
+   return (start_equity > 0) ? (CalculateDailyPnL(magic) / start_equity * 100.0) : 0;
+}
+
+//+------------------------------------------------------------------+
+//| Расчет P/L дня (Realized + Floating) по Magic                    |
+//+------------------------------------------------------------------+
+double CRiskManager::CalculateDailyPnL(long magic)
+{
+   double total_pnl = 0;
+   
+   // Рассчитываем время начала дня в серверных часах
+   datetime start_of_day_gmt = m_next_reset_time - 86400;
+   int server_offset = (int)(TimeCurrent() - TimeGMT());
+   datetime start_of_day_server = start_of_day_gmt + server_offset;
+
+   // 1. Считаем закрытые сделки из истории за сегодня (относительно 07:10 JST)
+   // Нам нужно учитывать только ту часть профита, которая была получена ПОСЛЕ сброса.
+   if(HistorySelect(start_of_day_server, TimeCurrent()))
+   {
+      int total_deals = HistoryDealsTotal();
+      for(int i = 0; i < total_deals; i++)
+      {
+         ulong ticket = HistoryDealGetTicket(i);
+         if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == magic)
+         {
+            ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(ticket, DEAL_ENTRY);
+            
+            // Нас интересуют только сделки закрытия (OUT/INOUT)
+            if(entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_INOUT)
+            {
+               long pos_id = HistoryDealGetInteger(ticket, DEAL_POSITION_ID);
+               string symbol = HistoryDealGetString(ticket, DEAL_SYMBOL);
+               double lot = HistoryDealGetDouble(ticket, DEAL_VOLUME);
+               ENUM_POSITION_TYPE pos_type = (HistoryDealGetInteger(ticket, DEAL_TYPE) == DEAL_TYPE_BUY) ? POSITION_TYPE_SELL : POSITION_TYPE_BUY; // Тип сделки обратен типу закрытой позиции
+               
+               // Находим сделку входа для этой позиции
+               if(HistorySelectByPosition(pos_id))
+               {
+                  int d_total = HistoryDealsTotal();
+                  datetime entry_time = 0;
+                  double entry_price = 0;
+                  for(int d = 0; d < d_total; d++)
+                  {
+                     ulong d_ticket = HistoryDealGetTicket(d);
+                     if(HistoryDealGetInteger(d_ticket, DEAL_ENTRY) == DEAL_ENTRY_IN)
+                     {
+                        entry_time = (datetime)HistoryDealGetInteger(d_ticket, DEAL_TIME);
+                        entry_price = HistoryDealGetDouble(d_ticket, DEAL_PRICE);
+                        pos_type = (HistoryDealGetInteger(d_ticket, DEAL_TYPE) == DEAL_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL;
+                        break;
+                     }
+                  }
+                  
+                  if(entry_time > 0)
+                  {
+                     if(entry_time < start_of_day_server)
+                     {
+                        // Сделка была открыта ВЧЕРА. Берем цену на момент сброса.
+                        double p_reset = GetPriceAtTime(symbol, start_of_day_gmt);
+                        double p_out = HistoryDealGetDouble(ticket, DEAL_PRICE);
+                        if(p_reset > 0)
+                           total_pnl += CalculateProfit(symbol, pos_type, lot, p_reset, p_out);
+                        else
+                           total_pnl += HistoryDealGetDouble(ticket, DEAL_PROFIT); // Fallback
+                     }
+                     else
+                     {
+                        // Сделка открыта и закрыта СЕГОДНЯ. Берем профит полностью.
+                        total_pnl += HistoryDealGetDouble(ticket, DEAL_PROFIT);
+                        total_pnl += HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+                        total_pnl += HistoryDealGetDouble(ticket, DEAL_SWAP);
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   // 2. Считаем текущие открытые позиции
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(PositionSelectByTicket(ticket))
+      {
+         if(PositionGetInteger(POSITION_MAGIC) == magic)
+         {
+            datetime pos_time = (datetime)PositionGetInteger(POSITION_TIME);
+            string symbol = PositionGetString(POSITION_SYMBOL);
+            double lot = PositionGetDouble(POSITION_VOLUME);
+            ENUM_POSITION_TYPE pos_type = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+            
+            if(pos_time < start_of_day_server)
+            {
+               // Позиция открыта ВЧЕРА. Считаем профит относительно цены на момент сброса.
+               double p_reset = GetPriceAtTime(symbol, start_of_day_gmt);
+               double p_now = (pos_type == POSITION_TYPE_BUY) ? SymbolInfoDouble(symbol, SYMBOL_BID) : SymbolInfoDouble(symbol, SYMBOL_ASK);
+               if(p_reset > 0)
+                  total_pnl += CalculateProfit(symbol, pos_type, lot, p_reset, p_now);
+               else
+                  total_pnl += PositionGetDouble(POSITION_PROFIT); // Fallback
+            }
+            else
+            {
+               // Позиция открыта СЕГОДНЯ. Считаем ее плавающий профит полностью.
+               total_pnl += PositionGetDouble(POSITION_PROFIT);
+               total_pnl += PositionGetDouble(POSITION_SWAP);
+            }
+         }
+      }
+   }
+
+   return total_pnl;
+}
+
+//+------------------------------------------------------------------+
+//| Получение цены инструмента на конкретный момент времени          |
+//+------------------------------------------------------------------+
+double CRiskManager::GetPriceAtTime(string symbol, datetime time_gmt)
+{
+   int server_offset = (int)(TimeCurrent() - TimeGMT());
+   datetime server_time = time_gmt + server_offset;
+   
+   return iClose(symbol, PERIOD_M1, iBarShift(symbol, PERIOD_M1, server_time));
+}
+
+//+------------------------------------------------------------------+
+//| Математический расчет профита                                    |
+//+------------------------------------------------------------------+
+double CRiskManager::CalculateProfit(string symbol, ENUM_POSITION_TYPE type, double lot, double price_open, double price_close)
+{
+   double tick_value = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+   
+   if(tick_size <= 0) return 0;
+   
+   double points = (type == POSITION_TYPE_BUY) ? (price_close - price_open) : (price_open - price_close);
+   return (points / tick_size) * tick_value * lot;
+}
 //+------------------------------------------------------------------+
 //| Расчет следующего времени сброса (JST -> GMT)                    |
 //+------------------------------------------------------------------+
@@ -200,7 +344,7 @@ void CRiskManager::UpdateResetTime()
       m_next_reset_time += 86400;
    }
 
-   PrintFormat("RM: Лимиты будут сброшены в %02d:%02d JST (GMT: %s)",
+   PrintFormat("RM: Limits will be reset at %02d:%02d JST (GMT: %s)",
                m_target_hour, m_target_min, TimeToString(m_next_reset_time));
 }
 

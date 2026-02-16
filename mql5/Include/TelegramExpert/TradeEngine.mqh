@@ -35,7 +35,7 @@ public:
    bool              CheckEntryRange(const SSignalData &signal, double &current_price);
 
    // Открытие двух позиций по сигналу
-   bool              OpenDualPosition(const SSignalData &signal, double lot);
+   bool              OpenDualPosition(const SSignalData &signal, double lot1, double lot2);
 
    // Мониторинг безубытка (после TP1)
    void              ManageBreakeven();
@@ -100,7 +100,7 @@ bool CTradeEngine::CheckEntryRange(const SSignalData &signal, double &current_pr
          return true;
    }
    
-   m_log.Debug(StringFormat("Цена %.5f вне диапазона [%.5f - %.5f] (+0.03 dev).", 
+   m_log.Debug(StringFormat("Price %.5f out of range [%.5f - %.5f] (+0.03 deviation).", 
                current_price, signal.entry_min, signal.entry_max));
    return false;
 }
@@ -108,7 +108,7 @@ bool CTradeEngine::CheckEntryRange(const SSignalData &signal, double &current_pr
 //+------------------------------------------------------------------+
 //| Открытие двух позиций по одному сигналу                          |
 //+------------------------------------------------------------------+
-bool CTradeEngine::OpenDualPosition(const SSignalData &signal, double lot)
+bool CTradeEngine::OpenDualPosition(const SSignalData &signal, double lot1, double lot2)
 {
    // Очищаем рынок перед новым сигналом (согласно ТЗ)
    CloseAll();
@@ -118,27 +118,27 @@ bool CTradeEngine::OpenDualPosition(const SSignalData &signal, double lot)
 
    if(signal.direction == DIR_BUY)
    {
-      res1 = m_trade.Buy(lot, m_symbol.Name(), m_symbol.Ask(), signal.stop_loss, signal.take_profit_1, comment + "_TP1");
-      res2 = m_trade.Buy(lot, m_symbol.Name(), m_symbol.Ask(), signal.stop_loss, signal.take_profit_2, comment + "_TP2");
+      res1 = m_trade.Buy(lot1, m_symbol.Name(), m_symbol.Ask(), signal.stop_loss, signal.take_profit_1, comment + "_TP1");
+      res2 = m_trade.Buy(lot2, m_symbol.Name(), m_symbol.Ask(), signal.stop_loss, signal.take_profit_2, comment + "_TP2");
    }
    else
    {
-      res1 = m_trade.Sell(lot, m_symbol.Name(), m_symbol.Bid(), signal.stop_loss, signal.take_profit_1, comment + "_TP1");
-      res2 = m_trade.Sell(lot, m_symbol.Name(), m_symbol.Bid(), signal.stop_loss, signal.take_profit_2, comment + "_TP2");
+      res1 = m_trade.Sell(lot1, m_symbol.Name(), m_symbol.Bid(), signal.stop_loss, signal.take_profit_1, comment + "_TP1");
+      res2 = m_trade.Sell(lot2, m_symbol.Name(), m_symbol.Bid(), signal.stop_loss, signal.take_profit_2, comment + "_TP2");
    }
 
    // Если хоть один ордер открылся без SL или вообще не открылся - закрываем всё для безопасности
    if(!res1 || !res2)
    {
-      m_log.Error(StringFormat("Ошибка открытия дуальной позиции. Ордер1: %s, Ордер2: %s",
+      m_log.Error(StringFormat("Dual position error. Order1: %s, Order2: %s",
                   res1 ? "OK" : m_trade.ResultRetcodeDescription(),
                   res2 ? "OK" : m_trade.ResultRetcodeDescription()));
       CloseAll();
       return false;
    }
 
-   m_log.Info(StringFormat("Дуальная позиция открыта для сигнала ID:%lld. Tickets: %lld, %lld", 
-              signal.id, m_trade.ResultOrder(), m_trade.ResultDeal()));
+   m_log.Info(StringFormat("Dual position opened for Signal ID:%lld. Tickets: %lld, %lld", 
+               signal.id, m_trade.ResultOrder(), m_trade.ResultDeal()));
    return true;
 }
 
@@ -180,11 +180,11 @@ void CTradeEngine::ManageBreakeven()
       {
          if(m_trade.PositionModify(ticket_tp2, open_price_tp2, m_position.TakeProfit()))
          {
-            PrintFormat("TE: Ордер TP1 закрыт. Перенос позиции #%lld в безубыток на %.5f", ticket_tp2, open_price_tp2);
+            PrintFormat("TE: TP1 closed. Moving position #%lld to breakeven at %.5f", ticket_tp2, open_price_tp2);
          }
          else
          {
-            PrintFormat("TE: Ошибка переноса в безубыток: %s", m_trade.ResultRetcodeDescription());
+            PrintFormat("TE: Breakeven modification error: %s", m_trade.ResultRetcodeDescription());
          }
       }
    }
@@ -204,7 +204,7 @@ void CTradeEngine::CloseAll()
          if(m_position.Magic() == m_magic)
          {
             if(!m_trade.PositionClose(ticket))
-               PrintFormat("TE: Ошибка закрытия позиции #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
+               PrintFormat("TE: Position close error #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
          }
       }
    }
@@ -218,7 +218,7 @@ void CTradeEngine::CloseAll()
          if(OrderGetInteger(ORDER_MAGIC) == m_magic)
          {
             if(!m_trade.OrderDelete(ticket))
-               PrintFormat("TE: Ошибка удаления ордера #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
+               PrintFormat("TE: Order delete error #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
          }
       }
    }
