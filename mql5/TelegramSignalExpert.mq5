@@ -17,7 +17,7 @@ input group "=== Trading Settings ==="
 input double        InpLotOrder1     = 0.15;           // Lot Order 1 (TP1)
 input double        InpLotOrder2     = 0.20;           // Lot Order 2 (TP2)
 input int           InpMagicNumber   = 123456;         // Magic Number
-input int           InpTimerInterval = 2;              // DB Polling Interval (sec)
+input int           InpTimerInterval = 1;              // DB Polling Interval (sec)
 
 input group "=== Risk Management ==="
 input double        InpMaxDailyLoss  = 3.0;            // Max Daily Loss (%)
@@ -54,6 +54,7 @@ int OnInit()
    }
 
    PrintFormat("Expert started. Symbol: %s, Magic: %d, Polling: %d sec.", _Symbol, InpMagicNumber, InpTimerInterval);
+   PrintFormat("Data Path: %s\\MQL5\\Files\\", TerminalInfoString(TERMINAL_DATA_PATH));
    return(INIT_SUCCEEDED);
 }
 

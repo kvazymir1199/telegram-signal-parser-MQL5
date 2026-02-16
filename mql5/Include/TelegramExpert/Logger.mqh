@@ -22,7 +22,7 @@ private:
    ENUM_LOG_LEVEL    m_level;
 
 public:
-                     CLogger(string prefix = "EA") : m_prefix(prefix), m_level(LOG_INFO) {}
+                     CLogger(string prefix = "EA") : m_prefix(prefix), m_level(LOG_DEBUG) {}
                     ~CLogger() {}
 
    void              SetLevel(ENUM_LOG_LEVEL level) { m_level = level; }

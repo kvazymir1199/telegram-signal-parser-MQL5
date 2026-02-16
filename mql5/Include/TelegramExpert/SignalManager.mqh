@@ -146,7 +146,7 @@ void CSignalManager::HandleNewSignals()
    
    if(count == 0)
    {
-      // m_log.Debug("No pending signals in database (PROCESS/MODIFY).");
+      m_log.Debug("No pending signals in database (PROCESS/MODIFY).");
    }
 
    for(int i = 0; i < count; i++)

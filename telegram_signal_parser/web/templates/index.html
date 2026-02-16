@@ -356,8 +356,8 @@
                 const sep = isWindows ? '\\' : '/';
 
                 // Append default filename if missing
-                if (targetId === 'database_path' && !path.toLowerCase().endsWith('.db')) {
-                    finalPath = path + (path.endsWith(sep) ? '' : sep) + 'signals.db';
+                if (targetId === 'database_path' && !path.toLowerCase().endsWith('.sqlite3')) {
+                    finalPath = path + (path.endsWith(sep) ? '' : sep) + 'signals.sqlite3';
                 }
 
                 input.value = finalPath;
