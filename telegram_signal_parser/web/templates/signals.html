@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signals History - XAUUSD Dashboard</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            accent: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .signal-row { transition: all 0.2s ease; cursor: pointer; }
+        .signal-row:hover { background: rgba(56, 189, 248, 0.05); }
+        .details-panel { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .details-panel.open { max-height: 800px; }
+        .direction-buy { color: #4ade80; }
+        .direction-sell { color: #f87171; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-8">
+    <div class="max-w-6xl mx-auto w-full flex-grow">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 glass p-6 rounded-2xl">
+            <div class="flex items-center mb-4 md:mb-0">
+                <div class="bg-blue-500/20 p-3 rounded-xl mr-4 text-blue-400">
+                    <i class="fa-solid fa-history text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight">Signals History</h1>
+                    <p class="text-slate-400 text-sm">View all parsed trading signals</p>
+                </div>
+            </div>
+
+            <div id="parser-status-container"
+                 class="flex items-center glass px-4 py-2 rounded-full"
+                 hx-get="/parser/status"
+                 hx-trigger="every 5s">
+                {% if is_running %}
+                <span class="flex h-3 w-3 relative">
+                    <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                <span class="ml-2 text-green-500 font-bold uppercase tracking-wider text-xs">Running</span>
+                {% else %}
+                <span class="h-3 w-3 rounded-full bg-red-500 inline-block"></span>
+                <span class="ml-2 text-red-500 font-bold uppercase tracking-wider text-xs">Stopped</span>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Sidebar Navigation & Status -->
+            <div class="md:col-span-1 space-y-6">
+                <div class="glass p-4 rounded-2xl">
+                    <a href="/" class="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-gear mr-2"></i> Back to Settings
+                    </a>
+                </div>
+
+                <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                    <div class="p-4 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('stats-content', this)">
+                        <h2 class="text-xs font-bold uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-chart-line mr-2 text-blue-400"></i> Statistics
+                        </h2>
+                        <i class="fa-solid fa-chevron-up text-xs text-slate-500"></i>
+                    </div>
+                    <div id="stats-content" class="p-6 space-y-4"
+                         hx-get="/signals/list"
+                         hx-select="#signal-count-source"
+                         hx-target="#total-signals-count"
+                         hx-trigger="every 5s">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-400">Total Signals:</span>
+                            <span id="total-signals-count" class="text-sm font-bold text-blue-400">{{ signals|length }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-400">Active Symbols:</span>
+                            <span class="text-sm font-bold text-slate-200">XAUUSD</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content: Signals List -->
+            <div class="md:col-span-3">
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="p-4 bg-slate-800/30 border-b border-slate-700">
+                        <div class="grid grid-cols-12 gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                            <div class="col-span-1">ID</div>
+                            <div class="col-span-2">Time</div>
+                            <div class="col-span-2">Dir</div>
+                            <div class="col-span-3">Entry Range</div>
+                            <div class="col-span-2">SL</div>
+                            <div class="col-span-2 text-right">Status</div>
+                        </div>
+                    </div>
+
+                    <div id="signals-container"
+                         class="divide-y divide-slate-800"
+                         hx-get="/signals/list"
+                         hx-trigger="every 5s"
+                         hx-swap="innerHTML">
+                        {% include 'signals_list_partial.html' %}
+                    </div>
+                </div>
+            </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-auto pt-12 text-center text-slate-500 text-sm pb-8 border-t border-slate-800 pt-8">
+            <p>&copy; 2026 XAUUSD Signal Parser Service.</p>
+        </footer>
+    </div>
+
+    <script>
+        let openSignalId = null;
+
+        function toggleDetails(id) {
+            const panel = document.getElementById(id);
+            const isOpening = !panel.classList.contains('open');
+
+            // Close all
+            document.querySelectorAll('.details-panel').forEach(p => p.classList.remove('open'));
+
+            if (isOpening) {
+                panel.classList.add('open');
+                openSignalId = id;
+            } else {
+                openSignalId = null;
+            }
+        }
+
+        // Restore open state after HTMX refresh
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'signals-container' && openSignalId) {
+                const panel = document.getElementById(openSignalId);
+                if (panel) panel.classList.add('open');
+            }
+        });
+
+        function toggleSidebar(contentId, header) {
+            const content = document.getElementById(contentId);
+            const icon = header.querySelector('.fa-chevron-up') || header.querySelector('.fa-chevron-down');
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                content.classList.add('hidden');
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+# Python dependencies and virtual environment
+venv/
+.venv/
+env/
+bin/
+lib/
+/include/
+share/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments and Secrets
+.env
+telegram_signal_parser/.env
+
+# Telegram Signal Parser specific
+telegram_signal_parser/*.session
+telegram_signal_parser/*.session-journal
+telegram_signal_parser/data/*.db
+telegram_signal_parser/logs/*.log
+telegram_signal_parser/signals.db
+telegram_signal_parser/signals.sqlite3
+telegram_signal_parser/data_export/
+
+# MQL5 compiled binaries
+*.ex5
+
+# Claude Code / AI agent files
+CLAUDE.md
+.claude/
+.pytest_cache/
+
+# Temp status files
+Activating
+Checking
+Launching
+Preparing
+
+# OS generated files
+.DS_Store
+._*
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/

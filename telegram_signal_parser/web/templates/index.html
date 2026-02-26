@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAUUSD Signal Dashboard</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            accent: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-field { background: #0f172a; border: 1px solid #334155; color: #f8fafc; transition: all 0.3s ease; }
+        .input-field:focus { border-color: #38bdf8; ring: 2px; ring-color: #38bdf8; outline: none; }
+        .btn-primary { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); transition: transform 0.2s; }
+        .btn-primary:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-8">
+    <div class="max-w-4xl mx-auto w-full flex-grow">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 glass p-6 rounded-2xl">
+            <div class="flex items-center mb-4 md:mb-0">
+                <div class="bg-blue-500/20 p-3 rounded-xl mr-4 text-blue-400">
+                    <i class="fa-solid fa-satellite-dish text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight">XAUUSD Signal Parser</h1>
+                    <p class="text-slate-400 text-sm">Settings Control Panel</p>
+                </div>
+            </div>
+
+            <div id="parser-status-container"
+                 class="flex items-center glass px-4 py-2 rounded-full"
+                 hx-get="/parser/status"
+                 hx-trigger="every 5s">
+                {% if is_running %}
+                <span class="flex h-3 w-3 relative">
+                    <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                <span class="ml-2 text-green-500 font-bold uppercase tracking-wider text-xs">Running</span>
+                {% else %}
+                <span class="h-3 w-3 rounded-full bg-red-500 inline-block"></span>
+                <span class="ml-2 text-red-500 font-bold uppercase tracking-wider text-xs">Stopped</span>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Total Signals</span>
+                <span class="text-2xl font-black text-blue-400">{{ stats.total }}</span>
+            </div>
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Signals Today</span>
+                <span class="text-2xl font-black text-green-400">{{ stats.today }}</span>
+            </div>
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Max SL Limit</span>
+                <span class="text-2xl font-black text-orange-400">{{ settings.MAX_SL_DISTANCE }}</span>
+            </div>
+            <div class="glass p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center justify-center text-center">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Active Port</span>
+                <span class="text-2xl font-black text-purple-400">{{ settings.WEB_PORT if settings.WEB_PORT else '8000' }}</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            <!-- Sidebar Controls -->
+            <div class="md:col-span-1 space-y-8">
+                <!-- Navigation Card -->
+                <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                    <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('nav-content', this)">
+                        <h2 class="text-sm font-bold uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-compass mr-2 text-blue-400"></i> Navigation
+                        </h2>
+                        <i class="fa-solid fa-chevron-up text-xs text-slate-500 transition-transform"></i>
+                    </div>
+                    <div id="nav-content" class="p-5 transition-all duration-300">
+                        <a href="/signals" class="w-full py-3 px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-semibold flex items-center justify-center transition-all group border border-blue-500/20">
+                            <i class="fa-solid fa-list-check mr-2 group-hover:scale-110 transition-transform"></i> View History
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Control Card -->
+                <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                    <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('control-content', this)">
+                        <h2 class="text-sm font-bold uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-power-off mr-2 text-blue-400"></i> Control
+                        </h2>
+                        <i class="fa-solid fa-chevron-up text-xs text-slate-500 transition-transform"></i>
+                    </div>
+                    <div id="control-content" class="p-6 space-y-3 transition-all duration-300">
+                        <button hx-post="/parser/start"
+                                hx-target="#parser-status-container"
+                                class="w-full py-3 px-4 rounded-xl btn-primary text-white font-semibold flex items-center justify-center">
+                            <i class="fa-solid fa-play mr-2"></i> Start Parser
+                        </button>
+                        <button hx-post="/parser/stop"
+                                hx-target="#parser-status-container"
+                                class="w-full py-3 px-4 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold flex items-center justify-center">
+                            <i class="fa-solid fa-stop mr-2"></i> Stop
+                        </button>
+                        <button hx-post="/parser/test-signal"
+                                class="w-full py-2 px-4 rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-400 text-xs font-semibold flex items-center justify-center hover:bg-blue-500/10 transition-all">
+                            <i class="fa-solid fa-vial mr-2"></i> Send Test Signal
+                        </button>
+                        <a href="/debug/settings" target="_blank"
+                           class="w-full py-2 px-4 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold flex items-center justify-center hover:bg-slate-800 transition-all">
+                            <i class="fa-solid fa-bug mr-2"></i> Debug Settings
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Info Card -->
+                <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                    <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('info-content', this)">
+                        <h2 class="text-sm font-bold uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-info-circle mr-2 text-blue-400"></i> Info
+                        </h2>
+                        <i class="fa-solid fa-chevron-up text-xs text-slate-500 transition-transform"></i>
+                    </div>
+                    <div id="info-content" class="p-6 transition-all duration-300">
+                        <ul class="text-sm space-y-2 text-slate-400">
+                            <li class="flex justify-between">
+                                <span>Version:</span>
+                                <span class="text-slate-200">1.0.0</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>Host:</span>
+                                <span class="text-slate-200">127.0.0.1</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>Port:</span>
+                                <span class="text-slate-200">{{ settings.WEB_PORT if settings.WEB_PORT else '8000' }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Form -->
+            <div class="md:col-span-2">
+                <div id="flash-container"></div>
+                <form hx-post="/settings/apply" hx-target="#flash-container" hx-swap="innerHTML" class="space-y-8">
+                    <!-- Telegram API Section -->
+                    <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                        <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('api-content', this)">
+                            <h2 class="text-sm font-bold uppercase tracking-wider flex items-center">
+                                <i class="fa-solid fa-key mr-2 text-blue-400"></i> Telegram API Configuration
+                            </h2>
+                            <i class="fa-solid fa-chevron-up text-xs text-slate-500 transition-transform"></i>
+                        </div>
+                        <div id="api-content" class="p-6 md:p-8 space-y-6 transition-all duration-300">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-slate-400">API ID</label>
+                                    <input type="text" name="telegram_api_id" value="{{ settings.TELEGRAM_API_ID }}" class="w-full p-3 rounded-xl input-field" placeholder="12345678">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-slate-400">API Hash</label>
+                                    <div class="relative group">
+                                        <input type="password" id="api-hash-input" name="telegram_api_hash" value="{{ settings.TELEGRAM_API_HASH }}"
+                                               class="w-full p-3 pr-24 rounded-xl input-field font-mono text-xs tracking-wider" placeholder="abcdef...">
+                                        <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                                            <button type="button" onclick="togglePassword('api-hash-input', this)" class="p-2 text-slate-500 hover:text-blue-400 transition-colors">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                            <button type="button" onclick="copyToClipboard('api-hash-input')" class="p-2 text-slate-500 hover:text-blue-400 transition-colors">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-400">Phone Number</label>
+                                <input type="text" name="telegram_phone" value="{{ settings.TELEGRAM_PHONE }}" class="w-full p-3 rounded-xl input-field" placeholder="+1234567890">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trading Filters Section -->
+                    <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                        <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('filters-content', this)">
+                            <h2 class="text-sm font-bold uppercase tracking-wider flex items-center">
+                                <i class="fa-solid fa-filter mr-2 text-blue-400"></i> Trading Filters
+                            </h2>
+                            <i class="fa-solid fa-chevron-up text-xs text-slate-500 transition-transform"></i>
+                        </div>
+                        <div id="filters-content" class="p-6 md:p-8 space-y-6 transition-all duration-300">
+                            <div class="space-y-4">
+                                <label class="text-sm font-medium text-slate-400">Channel Monitoring</label>
+                                <div class="glass bg-slate-900/50 rounded-xl border border-slate-700 overflow-hidden">
+                                    <div id="channels-list" class="max-h-48 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+                                    <div class="p-3 bg-slate-800/50 border-t border-slate-700 flex gap-2">
+                                        <input type="text" id="new-channel-id" onkeydown="if(event.key === 'Enter') { event.preventDefault(); addChannel(); }"
+                                               class="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none" placeholder="Enter channel ID...">
+                                        <button type="button" onclick="addChannel()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="telegram_channels" id="channels-hidden-input" value="{{ settings.TELEGRAM_CHANNELS }}">
+                                <p class="text-xs text-slate-500">Add or remove Telegram channel IDs for monitoring.</p>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-400">Filtering Symbols</label>
+                                <input type="text" name="filter_symbols" value="{{ settings.FILTER_SYMBOLS }}" class="w-full p-3 rounded-xl input-field" placeholder="XAUUSD,GOLD">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-400">Max SL Distance (Price Units)</label>
+                                <input type="number" step="0.1" name="max_sl_distance" value="{{ settings.MAX_SL_DISTANCE }}" class="w-full p-3 rounded-xl input-field" placeholder="15.0">
+                                <p class="text-xs text-slate-500">Maximum allowed distance between Entry and SL (e.g. 15.00 = 150 pips for Gold).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Settings Section -->
+                    <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                        <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('system-content', this)">
+                            <h2 class="text-sm font-bold uppercase tracking-wider flex items-center">
+                                <i class="fa-solid fa-server mr-2 text-blue-400"></i> System Settings
+                            </h2>
+                            <i class="fa-solid fa-chevron-up text-xs text-slate-500 transition-transform"></i>
+                        </div>
+                        <div id="system-content" class="p-6 md:p-8 space-y-6 transition-all duration-300">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-400">Logging Level</label>
+                                <select name="log_level" class="w-full p-3 rounded-xl input-field bg-slate-900">
+                                    <option value="DEBUG" {% if settings.LOG_LEVEL == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                                    <option value="INFO" {% if settings.LOG_LEVEL == 'INFO' %}selected{% endif %}>INFO</option>
+                                    <option value="WARNING" {% if settings.LOG_LEVEL == 'WARNING' %}selected{% endif %}>WARNING</option>
+                                    <option value="ERROR" {% if settings.LOG_LEVEL == 'ERROR' %}selected{% endif %}>ERROR</option>
+                                </select>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-400">Database Path</label>
+                                <div class="relative">
+                                    <input type="text" id="database_path" name="database_path" value="{{ settings.DATABASE_PATH }}" class="w-full p-3 pr-12 rounded-xl input-field">
+                                    <button type="button"
+                                            hx-get="/settings/browse?target_input=database_path"
+                                            hx-target="#picker-content"
+                                            onclick="openPicker()"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-blue-400 transition-colors">
+                                        <i class="fa-solid fa-folder-tree"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-400">Dashboard Port</label>
+                                <input type="number" name="web_port" value="{{ settings.WEB_PORT if settings.WEB_PORT else '8000' }}" class="w-full p-3 rounded-xl input-field" placeholder="8000">
+                                <p class="text-xs text-slate-500">Port for this web interface (requires restart to apply completely).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6">
+                        <button type="submit" class="w-full py-4 px-6 rounded-xl btn-primary text-white font-bold text-lg shadow-lg shadow-blue-500/20">
+                            Apply Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Live Logs Section -->
+        <div class="mt-8">
+            <div class="glass rounded-2xl overflow-hidden border border-slate-700/50">
+                <div class="p-5 bg-slate-800/40 flex justify-between items-center cursor-pointer" onclick="toggleSidebar('logs-content', this)">
+                    <div class="flex items-center">
+                        <h2 class="text-sm font-bold uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-terminal mr-2 text-blue-400"></i> Live Parser Logs
+                        </h2>
+                        <div class="ml-4 text-[10px] text-slate-500 uppercase tracking-widest flex items-center">
+                            <span class="flex h-2 w-2 mr-2 relative">
+                                <span class="animate-pulse absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                            </span>
+                            Live
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-up text-xs text-slate-500 transition-transform"></i>
+                </div>
+                <div id="logs-content" class="p-6 transition-all duration-300">
+                    <div class="bg-black/50 rounded-xl border border-slate-800 p-4 font-mono text-xs overflow-hidden shadow-inner">
+                        <div id="log-window"
+                             class="h-80 overflow-y-auto custom-scrollbar"
+                             hx-get="/parser/logs"
+                             hx-trigger="every 3s"
+                             hx-swap="innerHTML">
+                            <div class="text-slate-500 italic">Waiting for logs...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-auto pt-12 text-center text-slate-500 text-sm pb-8">
+            <p>&copy; 2026 XAUUSD Signal Parser Service.</p>
+        </footer>
+    </div>
+
+    <!-- Directory Picker Modal -->
+    <div id="directory-picker-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closePicker()"></div>
+        <div class="glass relative w-full max-w-md rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-5 bg-slate-800/60 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-bold text-slate-200">Browse Directory</h3>
+                <button onclick="closePicker()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="picker-content" class="p-6">
+                <div class="flex justify-center p-8"><i class="fa-solid fa-spinner fa-spin text-blue-500 text-2xl"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openPicker() {
+            document.getElementById('directory-picker-modal').classList.remove('hidden');
+        }
+
+        function closePicker() {
+            document.getElementById('directory-picker-modal').classList.add('hidden');
+        }
+
+        function selectFolder(path, targetId) {
+            const input = document.getElementById(targetId);
+            if (input) {
+                let finalPath = path;
+                const isWindows = path.includes('\\');
+                const sep = isWindows ? '\\' : '/';
+
+                // Append default filename if missing
+                if (targetId === 'database_path' && !path.toLowerCase().endsWith('.sqlite3')) {
+                    finalPath = path + (path.endsWith(sep) ? '' : sep) + 'signals.sqlite3';
+                }
+
+                input.value = finalPath;
+
+                // Trigger HTMX change if needed
+                input.dispatchEvent(new Event('change'));
+            }
+            closePicker();
+        }
+
+        // Управление списком каналов
+        let channels = [];
+        const channelsList = document.getElementById('channels-list');
+        const hiddenInput = document.getElementById('channels-hidden-input');
+
+        // Инициализация при загрузке
+        window.addEventListener('DOMContentLoaded', () => {
+            const initialValue = hiddenInput.value.trim();
+            if (initialValue) {
+                channels = initialValue.split(',').map(s => s.trim()).filter(s => s);
+            }
+            renderChannels();
+        });
+
+        function renderChannels() {
+            if (channels.length === 0) {
+                channelsList.innerHTML = '<div class="text-slate-500 text-sm text-center py-4 italic">Channel list is empty</div>';
+            } else {
+                channelsList.innerHTML = channels.map((id, index) => `
+                    <div class="flex justify-between items-center bg-slate-800 p-3 rounded-lg border border-slate-700 group hover:border-blue-500/50 transition-all">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-hashtag text-blue-400 mr-3 text-xs"></i>
+                            <span class="font-mono text-sm tracking-tight">${id}</span>
+                        </div>
+                        <button type="button" onclick="removeChannel(${index})" class="text-slate-500 hover:text-red-400 p-1 transition-colors">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+            hiddenInput.value = channels.join(',');
+        }
+
+        function addChannel() {
+            const input = document.getElementById('new-channel-id');
+            const val = input.value.trim();
+            if (val && !channels.includes(val)) {
+                channels.push(val);
+                renderChannels();
+                input.value = '';
+            }
+        }
+
+        function removeChannel(index) {
+            channels.splice(index, 1);
+            renderChannels();
+        }
+
+        // Sidebar Collapse Logic
+        function toggleSidebar(contentId, header) {
+            const content = document.getElementById(contentId);
+            const icon = header.querySelector('.fa-chevron-up') || header.querySelector('.fa-chevron-down');
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                content.classList.add('hidden');
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+
+        // Функции для работы с API Hash
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function copyToClipboard(inputId) {
+            const input = document.getElementById(inputId);
+            input.type = 'text'; // Temporarily change type to copy
+            input.select();
+            document.execCommand('copy');
+            input.type = 'password';
+
+            // Visual feedback
+            const flash = document.getElementById('flash-container');
+            flash.innerHTML = '<div class="bg-blue-500 text-white p-2 rounded mb-4" id="flash-message">Key copied to clipboard!</div>';
+            setTimeout(() => {
+                const msg = document.getElementById('flash-message');
+                if (msg) msg.remove();
+            }, 2000);
+        }
+
+        // Стиль для скроллбара
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        `;
+        document.head.appendChild(style);
+
+        // Remove flash messages and error popups after 5 seconds
+        document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+            if (evt.detail.target.id === 'flash-container') {
+                setTimeout(() => {
+                    const msg = document.getElementById('flash-message');
+                    if (msg) msg.remove();
+                    const err = document.getElementById('error-popup');
+                    if (err) err.remove();
+                }, 5000);
+            }
+
+            // Auto-scroll logic removed to allow manual scrolling
+        });
+    </script>
+</body>
+</html>
