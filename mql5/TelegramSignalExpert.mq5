@@ -18,7 +18,7 @@ input double        InpLotOrder1     = 0.15;           // Lot Order 1 (TP1)
 input double        InpLotOrder2     = 0.20;           // Lot Order 2 (TP2)
 input int           InpMagicNumber   = 123456;         // Magic Number
 input int           InpTimerInterval = 1;              // DB Polling Interval (sec)
-input int           InpEntryRangePoints = 300;         // Entry Range Tolerance (Points)
+input int           InpEntryRangePips = 30;            // Entry Range Tolerance (Pips)
 
 input group "=== Risk Management ==="
 input double        InpMaxDailyLoss  = 3.0;            // Max Daily Loss (%)
@@ -41,7 +41,7 @@ int OnInit()
    bool init_res = g_manager.Init(InpDatabasePath, _Symbol, InpMagicNumber,
                                   InpLotOrder1, InpLotOrder2,
                                   InpMaxDailyLoss, InpMaxSLDistance, InpStartTimeJST,
-                                  InpIncludeManualTrades, InpEntryRangePoints);
+                                  InpIncludeManualTrades, InpEntryRangePips * 10);
    if(!init_res)
    {
       Print("ERROR: Could not initialize SignalManager.");
