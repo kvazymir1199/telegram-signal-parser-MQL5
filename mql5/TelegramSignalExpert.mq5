@@ -41,7 +41,7 @@ int OnInit()
    bool init_res = g_manager.Init(InpDatabasePath, _Symbol, InpMagicNumber,
                                   InpLotOrder1, InpLotOrder2,
                                   InpMaxDailyLoss, InpMaxSLDistance, InpStartTimeJST,
-                                  InpIncludeManualTrades, InpEntryRangePoints);
+                                  InpIncludeManualTrades, InpEntryRangePoints * 10);
    if(!init_res)
    {
       Print("ERROR: Could not initialize SignalManager.");

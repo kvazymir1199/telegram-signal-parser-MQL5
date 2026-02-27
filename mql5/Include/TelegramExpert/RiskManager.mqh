@@ -92,6 +92,7 @@ bool CRiskManager::Init(string symbol_name, string start_time_jst, bool include_
    if(!m_symbol.Name(symbol_name)) return false;
 
    m_include_manual = include_manual;
+   m_trading_locked = false;
 
    // Парсинг времени "HH:MM"
    string parts[];

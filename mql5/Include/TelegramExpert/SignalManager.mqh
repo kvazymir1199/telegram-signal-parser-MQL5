@@ -123,6 +123,9 @@ void CSignalManager::OnTick()
    // 1. Проверяем лимиты риска ( Daily Loss + JST Time)
    m_risk.CheckDailyLoss(m_max_daily_loss, m_magic);
 
+   // Обновляем дашборд всегда (даже если торговля заблокирована)
+   UpdateDashboard();
+
    if(!m_risk.IsTradingAllowed())
    {
       m_log.Debug("Trading locked (limits or time). Waiting...");
@@ -136,9 +139,6 @@ void CSignalManager::OnTick()
 
    // 3. Обработка новых сигналов из БД
    HandleNewSignals();
-
-   // 4. Обновление инфо-панели
-   UpdateDashboard();
 }
 
 //+------------------------------------------------------------------+
