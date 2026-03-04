@@ -31,6 +31,9 @@ public:
    // Смена статуса сигнала (атомарная операция)
    bool              UpdateStatus(const long signal_id, const ENUM_SIGNAL_STATUS new_status);
 
+   // Invalidate all older pending signals (id < signal_id)
+   bool              InvalidatePriorSignals(const long signal_id);
+
 private:
    ENUM_SIGNAL_DIRECTION StringToDirection(string dir);
    string                StatusToDBString(const ENUM_SIGNAL_STATUS status);
@@ -191,6 +194,40 @@ bool CDatabaseManager::UpdateStatus(const long signal_id, const ENUM_SIGNAL_STAT
    if(!DatabaseTransactionCommit(m_db_handle))
    {
       PrintFormat("DB: TransactionCommit error. Code: %d", GetLastError());
+      return false;
+   }
+
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| Пометить все ожидающие сигналы с id < signal_id как INVALID      |
+//+------------------------------------------------------------------+
+bool CDatabaseManager::InvalidatePriorSignals(const long signal_id)
+{
+   if(m_db_handle == INVALID_HANDLE) return false;
+
+   string sql = StringFormat(
+      "UPDATE signals SET status='INVALID', updated_at=datetime('now') "
+      "WHERE id < %lld AND status IN ('PROCESS', 'MODIFY') AND symbol IN ('XAUUSD', 'GOLD')",
+      signal_id);
+
+   if(!DatabaseTransactionBegin(m_db_handle))
+   {
+      PrintFormat("DB: InvalidatePriorSignals - TransactionBegin error. Code: %d", GetLastError());
+      return false;
+   }
+
+   if(!DatabaseExecute(m_db_handle, sql))
+   {
+      PrintFormat("DB: InvalidatePriorSignals - UPDATE error. Code: %d. SQL: %s", GetLastError(), sql);
+      DatabaseTransactionRollback(m_db_handle);
+      return false;
+   }
+
+   if(!DatabaseTransactionCommit(m_db_handle))
+   {
+      PrintFormat("DB: InvalidatePriorSignals - TransactionCommit error. Code: %d", GetLastError());
       return false;
    }
 

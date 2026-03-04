@@ -41,7 +41,7 @@ public:
    // Мониторинг безубытка (после TP1)
    void              ManageBreakeven();
 
-   // Закрытие всех позиций по Magic Number
+   // Закрытие ВСЕХ позиций и ордеров (без фильтрации по Magic)
    void              CloseAll();
 
 private:
@@ -187,31 +187,25 @@ void CTradeEngine::ManageBreakeven()
 //+------------------------------------------------------------------+
 void CTradeEngine::CloseAll()
 {
-   // Закрываем позиции
+   // Закрываем все позиции
    for(int i = PositionsTotal() - 1; i >= 0; i--)
    {
       ulong ticket = PositionGetTicket(i);
       if(m_position.SelectByTicket(ticket))
       {
-         if(m_position.Magic() == m_magic)
-         {
-            if(!m_trade.PositionClose(ticket))
-               PrintFormat("TE: Position close error #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
-         }
+         if(!m_trade.PositionClose(ticket))
+            PrintFormat("TE: Position close error #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
       }
    }
 
-   // Удаляем отложенные ордера (на всякий случай, если они будут использоваться)
+   // Удаляем все отложенные ордера
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       ulong ticket = OrderGetTicket(i);
       if(OrderSelect(ticket))
       {
-         if(OrderGetInteger(ORDER_MAGIC) == m_magic)
-         {
-            if(!m_trade.OrderDelete(ticket))
-               PrintFormat("TE: Order delete error #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
-         }
+         if(!m_trade.OrderDelete(ticket))
+            PrintFormat("TE: Order delete error #%lld: %s", ticket, m_trade.ResultRetcodeDescription());
       }
    }
 }

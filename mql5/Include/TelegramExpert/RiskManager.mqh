@@ -21,14 +21,13 @@ private:
    double            m_starting_equity;// Эквити на начало торгового дня (07:10 JST)
    bool              m_trading_locked; // Флаг блокировки торговли
    datetime          m_next_reset_time;// Время следующего сброса лимитов (GMT)
-   bool              m_include_manual; // Учитывать ручные сделки в P/L
    CLogger           m_log;            // Логгер
 
 public:
                      CRiskManager();
                     ~CRiskManager();
 
-   bool              Init(string symbol_name, string start_time_jst, bool include_manual = false);
+   bool              Init(string symbol_name, string start_time_jst);
 
    // Проверка возможности торговли (время и лимиты)
    bool              IsTradingAllowed();
@@ -70,7 +69,6 @@ CRiskManager::CRiskManager() :
    m_starting_equity(0),
    m_trading_locked(false),
    m_next_reset_time(0),
-   m_include_manual(false),
    m_target_hour(7),
    m_target_min(10),
    m_log("RiskManager")
@@ -87,11 +85,10 @@ CRiskManager::~CRiskManager()
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
 //+------------------------------------------------------------------+
-bool CRiskManager::Init(string symbol_name, string start_time_jst, bool include_manual)
+bool CRiskManager::Init(string symbol_name, string start_time_jst)
 {
    if(!m_symbol.Name(symbol_name)) return false;
 
-   m_include_manual = include_manual;
    m_trading_locked = false;
 
    // Парсинг времени "HH:MM"
@@ -210,7 +207,7 @@ double CRiskManager::CalculateDailyPnL(long magic)
       {
          ulong ticket = HistoryDealGetTicket(i);
          long deal_magic = HistoryDealGetInteger(ticket, DEAL_MAGIC);
-         if(m_include_manual || deal_magic == magic)
+         if(magic == 0 || deal_magic == magic)
          {
             ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(ticket, DEAL_ENTRY);
             if(entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_INOUT)
@@ -281,7 +278,7 @@ double CRiskManager::CalculateDailyPnL(long magic)
       if(PositionSelectByTicket(ticket))
       {
          long pos_magic = PositionGetInteger(POSITION_MAGIC);
-         if(m_include_manual || pos_magic == magic)
+         if(magic == 0 || pos_magic == magic)
          {
             datetime pos_time = (datetime)PositionGetInteger(POSITION_TIME);
             string symbol = PositionGetString(POSITION_SYMBOL);

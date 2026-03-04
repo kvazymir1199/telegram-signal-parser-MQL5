@@ -24,7 +24,6 @@ input group "=== Risk Management ==="
 input double        InpMaxDailyLoss  = 3.0;            // Max Daily Loss (%)
 input double        InpMaxSLDistance = 15.0;           // Max Allowed SL Distance (Price Units)
 input string        InpStartTimeJST  = "07:10";        // Day Start Time (JST)
-input bool          InpIncludeManualTrades = false;    // Include Manual Trades in P/L
 
 input group "=== Database Settings ==="
 input string        InpDatabasePath  = "signals.sqlite3";           // DB File Path (in MQL5/Files)
@@ -41,7 +40,7 @@ int OnInit()
    bool init_res = g_manager.Init(InpDatabasePath, _Symbol, InpMagicNumber,
                                   InpLotOrder1, InpLotOrder2,
                                   InpMaxDailyLoss, InpMaxSLDistance, InpStartTimeJST,
-                                  InpIncludeManualTrades, InpEntryRangePoints * 10);
+                                  InpEntryRangePoints * 10);
    if(!init_res)
    {
       Print("ERROR: Could not initialize SignalManager.");

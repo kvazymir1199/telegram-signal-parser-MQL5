@@ -39,7 +39,7 @@ public:
    bool              Init(string db_path, string symbol, int magic,
                           double lot_val1, double lot_val2,
                           double max_loss, double max_sl_dist, string start_time_jst,
-                          bool include_manual = false, int entry_range_points = 300);
+                          int entry_range_points = 300);
    void              Deinit();
 
    // Основной цикл обработки (вызывается из OnTimer)
@@ -72,7 +72,7 @@ CSignalManager::~CSignalManager()
 bool CSignalManager::Init(string db_path, string symbol, int magic,
                           double lot_val1, double lot_val2,
                           double max_loss, double max_sl_dist, string start_time_jst,
-                          bool include_manual, int entry_range_points)
+                          int entry_range_points)
 {
    m_symbol = symbol;
    m_magic = magic;
@@ -82,8 +82,8 @@ bool CSignalManager::Init(string db_path, string symbol, int magic,
    m_max_sl_dist = max_sl_dist;
    m_entry_range_points = entry_range_points;
 
-   m_log.Info(StringFormat("Initialization: DB=%s, Symbol=%s, Magic=%d, IncludeManual=%s, EntryRange=%d pts",
-              db_path, symbol, magic, (include_manual ? "true" : "false"), entry_range_points));
+   m_log.Info(StringFormat("Initialization: DB=%s, Symbol=%s, Magic=%d, EntryRange=%d pts",
+              db_path, symbol, magic, entry_range_points));
 
    if(!m_db.Open(db_path))
    {
@@ -91,7 +91,7 @@ bool CSignalManager::Init(string db_path, string symbol, int magic,
       return false;
    }
 
-   if(!m_risk.Init(symbol, start_time_jst, include_manual))
+   if(!m_risk.Init(symbol, start_time_jst))
    {
       m_log.Error("Could not initialize RiskManager");
       return false;
@@ -197,6 +197,12 @@ void CSignalManager::HandleNewSignals()
          {
             PrintFormat("SM: Signal ID:%lld successfully executed.", signals[i].id);
             m_db.UpdateStatus(signals[i].id, STATUS_DONE);
+            // Invalidate all older pending signals — market structure has changed
+            if(m_db.InvalidatePriorSignals(signals[i].id))
+               m_log.Info(StringFormat("SM: All pending signals older than ID:%lld have been invalidated.", signals[i].id));
+            else
+               m_log.Warn(StringFormat("SM: Failed to invalidate signals older than ID:%lld.", signals[i].id));
+            break; // One signal per tick — stop processing after successful execution
          }
          else
          {
